@@ -1,0 +1,82 @@
+services:
+  # MariaDB Database
+  pricewatch-mariadb:
+    image: mariadb:11.2
+    container_name: pricewatch-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_DATABASE:-pricewatch}
+      MARIADB_USER: ${DB_USER:-pricewatch}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-pricewatch}
+    ports:
+      - "13307:3306"
+    volumes:
+      - pricewatch-mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pricewatch-network
+
+  # PHP Backend (Symfony)
+  pricewatch-php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: pricewatch-php
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_SECRET: ${APP_SECRET:-changeme}
+      DATABASE_URL: mysql://${DB_USER:-pricewatch}:${DB_PASSWORD:-pricewatch}@pricewatch-mariadb:3306/${DB_DATABASE:-pricewatch}?serverVersion=mariadb-11.2.0
+      MAILER_DSN: smtp://pricewatch-mailhog:1025
+    ports:
+      - "8100:80"
+    volumes:
+      - ./backend:/var/www/html
+      - pricewatch-php-vendor:/var/www/html/vendor
+    depends_on:
+      pricewatch-mariadb:
+        condition: service_healthy
+    networks:
+      - pricewatch-network
+
+  # React Frontend
+  pricewatch-frontend:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.frontend
+    container_name: pricewatch-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8100
+    ports:
+      - "3100:5173"
+    volumes:
+      - ./frontend:/app
+      - pricewatch-frontend-node-modules:/app/node_modules
+    networks:
+      - pricewatch-network
+
+  # Mailhog for email testing
+  pricewatch-mailhog:
+    image: mailhog/mailhog:latest
+    container_name: pricewatch-mailhog
+    restart: unless-stopped
+    ports:
+      - "11025:1025"   # SMTP
+      - "18025:8025"   # Web UI
+    networks:
+      - pricewatch-network
+
+volumes:
+  pricewatch-mariadb-data:
+  pricewatch-php-vendor:
+  pricewatch-frontend-node-modules:
+
+networks:
+  pricewatch-network:
+    driver: bridge

@@ -1,0 +1,61 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // TODO: Implement login
+    console.log('Login:', { email, password })
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <h1 className="text-2xl font-bold text-center mb-6">Inloggen</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              E-mailadres
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Wachtwoord
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          >
+            Inloggen
+          </button>
+        </form>
+        <p className="text-center mt-4 text-gray-600">
+          Nog geen account?{' '}
+          <Link to="/register" className="text-primary-600 hover:underline">
+            Registreer hier
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,6 @@
+# Controllers are imported separately
+controllers:
+    resource:
+        path: ../src/Controller/
+        namespace: App\Controller
+    type: attribute
