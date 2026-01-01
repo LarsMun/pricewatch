@@ -23,7 +23,10 @@ async function request<T>(endpoint: string, options: FetchOptions = {}): Promise
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error?.message || 'Er is een fout opgetreden')
+    // Handle different error formats from backend
+    const message = error.message || error.error ||
+      (error.errors ? Object.values(error.errors).join(', ') : 'Er is een fout opgetreden')
+    throw new Error(message)
   }
 
   return response.json()

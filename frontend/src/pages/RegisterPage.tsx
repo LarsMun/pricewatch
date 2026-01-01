@@ -1,21 +1,51 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { register } = useAuth()
+  const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement registration
-    console.log('Register:', { email, password })
+    setError('')
+
+    if (password !== confirmPassword) {
+      setError('Wachtwoorden komen niet overeen')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Wachtwoord moet minimaal 8 karakters zijn')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      await register(email, password)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registratie mislukt')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <h1 className="text-2xl font-bold text-center mb-6">Registreren</h1>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -58,9 +88,10 @@ export default function RegisterPage() {
           </div>
           <button
             type="submit"
-            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            disabled={isLoading}
+            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Registreren
+            {isLoading ? 'Bezig...' : 'Registreren'}
           </button>
         </form>
         <p className="text-center mt-4 text-gray-600">

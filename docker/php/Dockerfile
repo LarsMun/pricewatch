@@ -38,6 +38,9 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # Enable Apache modules
 RUN a2enmod rewrite headers
 
+# Allow .htaccess overrides for Symfony routing
+RUN sed -ri -e '/<Directory \${APACHE_DOCUMENT_ROOT}>/,/<\/Directory>/s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+
 # Configure PHP for development
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
