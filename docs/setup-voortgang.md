@@ -1,10 +1,10 @@
 # PrijsWacht - Setup Voortgang
 
-> Laatst bijgewerkt: 2024-12-31
+> Laatst bijgewerkt: 2026-01-01
 
-## Huidige Status: Basis Infrastructuur Compleet
+## Huidige Status: Fase 1 & 2 Compleet
 
-De basis Docker-infrastructuur en project skeletons zijn opgezet en werkend.
+Authenticatie, CRUD API en scraping core zijn volledig werkend.
 
 ---
 
@@ -21,83 +21,77 @@ De basis Docker-infrastructuur en project skeletons zijn opgezet en werkend.
 
 ## Wat Is Gedaan
 
-### Docker Setup
+### Fase 0: Docker Setup
 - [x] `docker-compose.yml` met 4 services (mariadb, php, frontend, mailhog)
 - [x] `docker/php/Dockerfile` - PHP 8.3 + Apache + extensions
 - [x] `docker/php/php.ini` - PHP configuratie voor development
 - [x] `docker/nginx/Dockerfile.frontend` - Node 20 Alpine voor Vite dev server
 - [x] Netwerk: `pricewatch-network` voor inter-container communicatie
 - [x] Volumes voor persistente data (mariadb, vendor, node_modules)
+- [x] Apache AllowOverride + .htaccess voor Symfony routing
 
-### Backend (Symfony)
-- [x] Symfony 7.4 project skeleton
-- [x] Composer dependencies geïnstalleerd
-- [x] JWT authenticatie geconfigureerd (keys gegenereerd)
-- [x] Database connectie naar MariaDB
-- [x] Eerste migratie uitgevoerd
+### Fase 1: Authenticatie (Compleet)
 
-#### Entities (volgens specificatie)
-- [x] `src/Entity/User.php` - Gebruikersaccount met Symfony Security
-- [x] `src/Entity/ProductWatch.php` - Gemonitorde productpagina
-- [x] `src/Entity/PriceCheck.php` - Historische prijscheck
-- [x] `src/Entity/Notification.php` - Verstuurde notificatie
+#### Backend API Endpoints
+| Endpoint | Method | Auth | Beschrijving |
+|----------|--------|------|--------------|
+| `/api/register` | POST | - | Registreer nieuwe gebruiker |
+| `/api/login` | POST | - | Login, retourneert JWT token |
+| `/api/me` | GET | JWT | Huidige gebruiker info |
 
-#### Enums
-- [x] `src/Enum/CheckMethod.php` - HTTP of BROWSER
-- [x] `src/Enum/NotificationType.php` - PRICE_DECREASE, PRICE_INCREASE, SITE_BROKEN
+#### Frontend Auth
+- [x] `AuthContext` - Token opslag (localStorage), user state
+- [x] `ProtectedRoute` - Redirect naar /login als niet ingelogd
+- [x] `LoginPage` - Werkende login met error handling
+- [x] `RegisterPage` - Werkende registratie met validatie
+- [x] `DashboardPage` - Toont user email + uitlogknop
 
-#### Repositories
-- [x] `src/Repository/UserRepository.php`
-- [x] `src/Repository/ProductWatchRepository.php` - Met `findDueForCheck()`, `findByUser()`, rate limiting queries
-- [x] `src/Repository/PriceCheckRepository.php` - Met history queries
-- [x] `src/Repository/NotificationRepository.php`
+### Fase 2: Scraping Core (Compleet)
 
-#### Configuratie
-- [x] `config/packages/doctrine.yaml` - MariaDB configuratie
-- [x] `config/packages/security.yaml` - JWT firewall, user provider
-- [x] `config/packages/lexik_jwt_authentication.yaml` - JWT settings
-- [x] `config/packages/nelmio_cors.yaml` - CORS voor API
-- [x] `config/packages/messenger.yaml` - Async queue setup
-- [x] `config/packages/mailer.yaml` - Mailhog configuratie
+#### ProductWatch CRUD API
+| Endpoint | Method | Auth | Beschrijving |
+|----------|--------|------|--------------|
+| `/api/watches` | GET | JWT | Lijst van user's watches |
+| `/api/watches` | POST | JWT | Nieuwe watch aanmaken |
+| `/api/watches/{id}` | GET | JWT | Watch detail + prijshistorie |
+| `/api/watches/{id}` | PATCH | JWT | Update watch |
+| `/api/watches/{id}` | DELETE | JWT | Verwijder watch |
 
-### Frontend (React)
-- [x] Vite + React 18 + TypeScript project
-- [x] TailwindCSS geconfigureerd
-- [x] React Router v7 voor navigatie
-- [x] TanStack Query voor server state management
-- [x] API client basis (`src/api/client.ts`)
-- [x] TypeScript types (`src/types/index.ts`)
+#### Scraper Services
+- [x] `ScrapeEngineInterface` - Contract voor scrape engines
+- [x] `HttpEngine` - Fetch pages via Symfony HttpClient
+- [x] `PriceExtractor` - CSS selector → prijs parsing
+- [x] `PriceCheckService` - Business logic, debounce, failure tracking
 
-#### Pagina's (basis)
-- [x] `src/pages/HomePage.tsx` - Landing page
-- [x] `src/pages/LoginPage.tsx` - Login formulier (nog niet functioneel)
-- [x] `src/pages/RegisterPage.tsx` - Registratie formulier (nog niet functioneel)
-- [x] `src/pages/DashboardPage.tsx` - Dashboard placeholder
+#### CLI Commands
+```bash
+# Test scraper met URL + selector
+docker exec pricewatch-php php bin/console app:test-scrape "https://example.com" ".price"
+
+# Check alle due watches
+docker exec pricewatch-php php bin/console app:check-prices
+
+# Check specifieke watch
+docker exec pricewatch-php php bin/console app:check-prices --watch=1
+```
 
 ---
 
 ## Wat Nog Moet Gebeuren
 
-### Fase 1: Foundation (bijna klaar)
-- [ ] API endpoints voor authenticatie (`/api/register`, `/api/login`)
-- [ ] Frontend login/register koppelen aan API
-- [ ] Protected routes in React
-
-### Fase 2: Scraping Core
-- [ ] `ScrapeEngineInterface` + `HttpEngine` implementatie
-- [ ] `PriceExtractor` service (selector → price)
-- [ ] Worker command: process watches waar `next_check_at <= now()`
-- [ ] Rate limiting per domain
+### Fase 2b: Rate Limiting (optioneel)
+- [ ] Per-domain throttling
+- [ ] Configurable delays tussen requests
 
 ### Fase 3: Notificaties
 - [ ] `NotificationService`
 - [ ] Email templates (price_decrease, price_increase, site_broken)
-- [ ] Debounce logic implementatie
+- [ ] Debounce logic (voorkomt spam bij flapping prices)
 
-### Fase 4: Frontend
-- [ ] Watch list view met data
+### Fase 4: Frontend Uitbreiding
+- [ ] Watch list view met echte data
 - [ ] Watch detail + prijshistorie grafiek
-- [ ] Add watch flow
+- [ ] Add watch formulier
 
 ### Fase 5: Bookmarklet
 - [ ] Bookmarklet JavaScript code
@@ -105,74 +99,9 @@ De basis Docker-infrastructuur en project skeletons zijn opgezet en werkend.
 - [ ] `/api/watches/validate` endpoint
 - [ ] Confirmation flow in React
 
----
-
-## Handige Commando's
-
-### Docker
-```bash
-# Start alle services
-docker compose up -d
-
-# Stop alle services
-docker compose down
-
-# Bekijk logs (alle services)
-docker compose logs -f
-
-# Bekijk logs (specifieke service)
-docker compose logs -f pricewatch-php
-
-# Herstart een service
-docker compose restart pricewatch-php
-
-# Rebuild na Dockerfile wijziging
-docker compose build --no-cache pricewatch-php
-docker compose up -d
-```
-
-### Backend (Symfony)
-```bash
-# Toegang tot PHP container
-docker exec -it pricewatch-php bash
-
-# Symfony console commando's
-docker exec pricewatch-php php bin/console <command>
-
-# Cache clearen
-docker exec pricewatch-php php bin/console cache:clear
-
-# Nieuwe migratie maken
-docker exec pricewatch-php php bin/console doctrine:migrations:diff
-
-# Migraties uitvoeren
-docker exec pricewatch-php php bin/console doctrine:migrations:migrate
-
-# Entity maken (interactief)
-docker exec -it pricewatch-php php bin/console make:entity
-
-# Controller maken
-docker exec -it pricewatch-php php bin/console make:controller
-```
-
-### Frontend
-```bash
-# Toegang tot frontend container
-docker exec -it pricewatch-frontend sh
-
-# NPM commando's
-docker exec pricewatch-frontend npm install <package>
-docker exec pricewatch-frontend npm run build
-```
-
-### Database
-```bash
-# MySQL CLI toegang
-docker exec -it pricewatch-mariadb mariadb -u pricewatch -ppricewatch pricewatch
-
-# Database dump
-docker exec pricewatch-mariadb mariadb-dump -u pricewatch -ppricewatch pricewatch > backup.sql
-```
+### Fase 6: Browser Engine (voor SPA sites)
+- [ ] `BrowserEngine` met Playwright/Puppeteer
+- [ ] Fallback voor sites die JavaScript vereisen (bol.com, Amazon)
 
 ---
 
@@ -191,62 +120,56 @@ pricewatch/
 │   ├── bin/console
 │   ├── composer.json
 │   ├── config/
-│   │   ├── bundles.php
 │   │   ├── packages/
 │   │   │   ├── doctrine.yaml
-│   │   │   ├── framework.yaml
-│   │   │   ├── lexik_jwt_authentication.yaml
-│   │   │   ├── mailer.yaml
-│   │   │   ├── messenger.yaml
-│   │   │   ├── monolog.yaml
-│   │   │   ├── nelmio_cors.yaml
 │   │   │   ├── security.yaml
-│   │   │   └── validator.yaml
-│   │   ├── routes.yaml
-│   │   ├── routes/
-│   │   │   └── framework.yaml
-│   │   ├── services.yaml
+│   │   │   ├── lexik_jwt_authentication.yaml
+│   │   │   └── ...
 │   │   └── jwt/
 │   │       ├── private.pem
 │   │       └── public.pem
 │   ├── migrations/
-│   │   └── Version20251230233213.php
 │   ├── public/
-│   │   └── index.php
-│   ├── src/
-│   │   ├── Controller/
-│   │   ├── Entity/
-│   │   │   ├── User.php
-│   │   │   ├── ProductWatch.php
-│   │   │   ├── PriceCheck.php
-│   │   │   └── Notification.php
-│   │   ├── Enum/
-│   │   │   ├── CheckMethod.php
-│   │   │   └── NotificationType.php
-│   │   ├── Repository/
-│   │   │   ├── UserRepository.php
-│   │   │   ├── ProductWatchRepository.php
-│   │   │   ├── PriceCheckRepository.php
-│   │   │   └── NotificationRepository.php
-│   │   ├── Service/
-│   │   └── Kernel.php
-│   └── .env
+│   │   ├── index.php
+│   │   └── .htaccess
+│   └── src/
+│       ├── Command/
+│       │   ├── CheckPricesCommand.php
+│       │   └── TestScrapeCommand.php
+│       ├── Controller/
+│       │   ├── AuthController.php
+│       │   └── ProductWatchController.php
+│       ├── Entity/
+│       │   ├── User.php
+│       │   ├── ProductWatch.php
+│       │   ├── PriceCheck.php
+│       │   └── Notification.php
+│       ├── Enum/
+│       │   ├── CheckMethod.php
+│       │   └── NotificationType.php
+│       ├── Repository/
+│       │   ├── UserRepository.php
+│       │   ├── ProductWatchRepository.php
+│       │   ├── PriceCheckRepository.php
+│       │   └── NotificationRepository.php
+│       ├── Scraper/
+│       │   ├── ScrapeEngineInterface.php
+│       │   ├── HttpEngine.php
+│       │   └── PriceExtractor.php
+│       └── Service/
+│           └── PriceCheckService.php
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts
-│   ├── tsconfig.json
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   ├── index.html
 │   └── src/
 │       ├── main.tsx
 │       ├── App.tsx
-│       ├── index.css
-│       ├── vite-env.d.ts
 │       ├── api/
 │       │   └── client.ts
 │       ├── components/
-│       ├── hooks/
+│       │   └── ProtectedRoute.tsx
+│       ├── contexts/
+│       │   └── AuthContext.tsx
 │       ├── pages/
 │       │   ├── HomePage.tsx
 │       │   ├── LoginPage.tsx
@@ -257,9 +180,105 @@ pricewatch/
 └── docs/
     ├── prijsmonitor-specificatie-v3.md
     ├── prijswacht-entities.md
-    ├── codeManifest.md
-    └── setup-voortgang.md (dit bestand)
+    └── setup-voortgang.md
 ```
+
+---
+
+## Handige Commando's
+
+### Docker
+```bash
+# Start alle services
+docker compose up -d
+
+# Stop alle services
+docker compose down
+
+# Bekijk logs
+docker compose logs -f pricewatch-php
+
+# Rebuild na Dockerfile wijziging
+docker compose build --no-cache pricewatch-php && docker compose up -d
+```
+
+### Backend (Symfony)
+```bash
+# Toegang tot PHP container
+docker exec -it pricewatch-php bash
+
+# Cache clearen
+docker exec pricewatch-php php bin/console cache:clear
+
+# Migraties uitvoeren
+docker exec pricewatch-php php bin/console doctrine:migrations:migrate
+
+# Routes bekijken
+docker exec pricewatch-php php bin/console debug:router
+```
+
+### Scraper Testing
+```bash
+# Test een URL met selector
+docker exec pricewatch-php php bin/console app:test-scrape \
+  "https://example.com/product" ".price-class"
+
+# Check alle due watches
+docker exec pricewatch-php php bin/console app:check-prices
+
+# Check specifieke watch (voor debugging)
+docker exec pricewatch-php php bin/console app:check-prices --watch=1
+```
+
+### API Testing
+```bash
+# Login en token krijgen
+curl -X POST http://localhost:8100/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test@example.com","password":"testpassword123"}'
+
+# Watches ophalen (gebruik token van login)
+curl http://localhost:8100/api/watches \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Watch aanmaken
+curl -X POST http://localhost:8100/api/watches \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","priceSelector":".price","productName":"Test"}'
+```
+
+### Database
+```bash
+# MySQL CLI toegang
+docker exec -it pricewatch-mariadb mariadb -u pricewatch -ppricewatch pricewatch
+
+# Database dump
+docker exec pricewatch-mariadb mariadb-dump -u pricewatch -ppricewatch pricewatch > backup.sql
+```
+
+---
+
+## Bekende Beperkingen
+
+### HTTP Engine
+De huidige `HttpEngine` werkt alleen met server-side rendered HTML. Sites die prijzen via JavaScript laden (SPA's) worden niet ondersteund:
+- bol.com - Prijzen via React
+- Amazon - Prijzen via JavaScript
+- Veel moderne webshops
+
+**Oplossing**: Later een `BrowserEngine` toevoegen met headless browser (Playwright).
+
+### Price Parsing
+De `PriceExtractor` ondersteunt:
+- `€ 19,99` → `19.99`
+- `19.99` → `19.99`
+- `1.299,00` → `1299.00`
+- `1,299.00` → `1299.00`
+
+Niet ondersteund:
+- Prijzen met tekst erbij ("vanaf €19,99")
+- Meerdere prijzen in één element
 
 ---
 
@@ -269,44 +288,24 @@ pricewatch/
 ```env
 APP_ENV=dev
 APP_SECRET=changeme_in_production
-DATABASE_URL=mysql://pricewatch:pricewatch@pricewatch-mariadb:3306/pricewatch?serverVersion=mariadb-11.2.0
+DATABASE_URL=mysql://pricewatch:pricewatch@pricewatch-mariadb:3306/pricewatch
 MAILER_DSN=smtp://pricewatch-mailhog:1025
 JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
 JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
 JWT_PASSPHRASE=pricewatch
-MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
-CORS_ALLOW_ORIGIN='^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
 ```
 
-### Frontend (via Vite)
-```env
-VITE_API_URL=http://localhost:8100
-```
+### Frontend
+De API URL wordt geconfigureerd via Vite proxy in `vite.config.ts`.
 
 ---
 
-## Poorten Overzicht (vermijd conflicten)
+## Git Repository
 
-Andere projecten op dit systeem gebruiken:
-- 5432 (whendue-postgres)
-- 8000 (whendue-php)
-- 8081, 19000-19002 (whendue-frontend)
-- 1025, 8025 (whendue-mailhog)
-- 13000 (money-frontend)
-- 13306 (money-mysql)
-- 18787 (money-backend)
+**URL**: https://github.com/LarsMun/pricewatch
 
-PriceWatch gebruikt:
-- 8100 (backend)
-- 3100 (frontend)
-- 13307 (mariadb)
-- 11025, 18025 (mailhog)
-
----
-
-## Volgende Stappen
-
-1. **Maak authenticatie API endpoints** - `AuthController` met register en login
-2. **Koppel frontend aan API** - Login/register forms werkend maken
-3. **Implementeer ProductWatch CRUD** - Basis API voor watches beheren
-4. **Begin met scraping engine** - HttpEngine voor eenvoudige sites
+### Recente Commits
+- `c180a03` - Add scraping core (Phase 2)
+- `4269ea8` - Add authentication API and frontend integration
+- `ebc2131` - Add .vite/ to gitignore
+- `3bb87d4` - Initial commit: Pricewatch application
