@@ -26,6 +26,9 @@ phpunit.xml
 # Claude Code
 .claude/
 
+# Build cache
+.vite/
+
 # OS
 .DS_Store
 Thumbs.db
