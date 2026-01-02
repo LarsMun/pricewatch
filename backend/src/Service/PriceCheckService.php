@@ -4,8 +4,12 @@ namespace App\Service;
 
 use App\Entity\PriceCheck;
 use App\Entity\ProductWatch;
+use App\Enum\CheckMethod;
+use App\Scraper\BrowserEngine;
 use App\Scraper\HttpEngine;
+use App\Scraper\ImageExtractor;
 use App\Scraper\PriceExtractor;
+use App\Scraper\ScrapeEngineInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -13,10 +17,24 @@ class PriceCheckService
 {
     public function __construct(
         private HttpEngine $httpEngine,
+        private BrowserEngine $browserEngine,
         private PriceExtractor $priceExtractor,
+        private ImageExtractor $imageExtractor,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
+        private NotificationService $notificationService,
     ) {}
+
+    /**
+     * Get the appropriate scrape engine for a watch.
+     */
+    private function getEngine(ProductWatch $watch): ScrapeEngineInterface
+    {
+        return match ($watch->getCheckMethod()) {
+            CheckMethod::BROWSER => $this->browserEngine,
+            default => $this->httpEngine,
+        };
+    }
 
     /**
      * Check the price for a single ProductWatch.
@@ -24,10 +42,12 @@ class PriceCheckService
      */
     public function check(ProductWatch $watch): PriceCheck
     {
-        $this->logger->info("Checking price for watch #{$watch->getId()}: {$watch->getUrl()}");
+        $engine = $this->getEngine($watch);
+        $engineName = $watch->getCheckMethod()->value;
+        
+        $this->logger->info("Checking price for watch #{$watch->getId()} using {$engineName} engine: {$watch->getUrl()}");
 
-        // Fetch the page
-        $scrapeResult = $this->httpEngine->fetch($watch->getUrl());
+        $scrapeResult = $engine->fetch($watch->getUrl());
 
         $priceCheck = new PriceCheck();
         $priceCheck->setProductWatch($watch);
@@ -38,54 +58,102 @@ class PriceCheckService
         $watch->setLastCheckedAt(new \DateTimeImmutable());
 
         if (!$scrapeResult->success) {
-            $priceCheck->setWasSuccessful(false);
-            $priceCheck->setErrorMessage($scrapeResult->error);
-            $watch->incrementFailures();
-            
-            $this->logger->warning("Fetch failed for watch #{$watch->getId()}: {$scrapeResult->error}");
+            $this->handleFailure($watch, $priceCheck, $scrapeResult->error);
         } else {
-            // Extract price from HTML
             $extractResult = $this->priceExtractor->extract(
                 $scrapeResult->html,
                 $watch->getPriceSelector()
             );
 
             if (!$extractResult->success) {
-                $priceCheck->setWasSuccessful(false);
-                $priceCheck->setErrorMessage($extractResult->error);
-                $watch->incrementFailures();
-                
-                $this->logger->warning("Extraction failed for watch #{$watch->getId()}: {$extractResult->error}");
+                $this->handleFailure($watch, $priceCheck, $extractResult->error);
             } else {
-                $priceCheck->setWasSuccessful(true);
-                $priceCheck->setPrice($extractResult->price);
-                $priceCheck->setRawText($extractResult->rawText);
-                
-                $watch->resetFailures();
-                $watch->setLastSuccessfulCheckAt(new \DateTimeImmutable());
-                $watch->setLastSeenRawText($extractResult->rawText);
-
-                // Update price on watch (handles debounce)
-                $priceChanged = $watch->updatePrice($extractResult->price);
-                
-                if ($watch->getOriginalPrice() === null) {
-                    $watch->setOriginalPrice($extractResult->price);
-                }
-
-                $this->logger->info(
-                    "Price check successful for watch #{$watch->getId()}: {$extractResult->price}" .
-                    ($priceChanged ? " (CHANGED)" : "")
-                );
+                $this->handleSuccess($watch, $priceCheck, $extractResult->price, $extractResult->rawText, $scrapeResult->html);
             }
         }
 
-        // Schedule next check
         $watch->scheduleNextCheck();
 
-        // Persist
         $this->entityManager->persist($priceCheck);
         $this->entityManager->flush();
 
         return $priceCheck;
+    }
+
+    private function handleFailure(ProductWatch $watch, PriceCheck $priceCheck, string $error): void
+    {
+        $priceCheck->setWasSuccessful(false);
+        $priceCheck->setErrorMessage($error);
+        $watch->incrementFailures();
+
+        $this->logger->warning("Check failed for watch #{$watch->getId()}: {$error}");
+
+        // Check if we hit the failure threshold (5 consecutive failures)
+        if ($watch->hasReachedFailureThreshold()) {
+            $this->logger->warning("Watch #{$watch->getId()} reached failure threshold, sending notification and pausing");
+            
+            $watch->pause();
+            
+            try {
+                $this->notificationService->notifySiteBroken($watch);
+            } catch (\Throwable $e) {
+                $this->logger->error("Failed to send site_broken notification: " . $e->getMessage());
+            }
+        }
+    }
+
+    private function handleSuccess(ProductWatch $watch, PriceCheck $priceCheck, string $price, string $rawText, string $html): void
+    {
+        $priceCheck->setWasSuccessful(true);
+        $priceCheck->setPrice($price);
+        $priceCheck->setRawText($rawText);
+
+        $oldPrice = $watch->getCurrentPrice();
+
+        $watch->resetFailures();
+        $watch->setLastSuccessfulCheckAt(new \DateTimeImmutable());
+        $watch->setLastSeenRawText($rawText);
+
+        // Update price on watch (handles debounce)
+        $priceChanged = $watch->updatePrice($price);
+
+        if ($watch->getOriginalPrice() === null) {
+            $watch->setOriginalPrice($price);
+        }
+
+        // Extract product image if not already set
+        if ($watch->getImageUrl() === null) {
+            $imageUrl = $this->imageExtractor->extract($html, $watch->getUrl());
+            if ($imageUrl) {
+                $watch->setImageUrl($imageUrl);
+                $this->logger->info("Extracted image for watch #{$watch->getId()}: {$imageUrl}");
+            }
+        }
+
+        $this->logger->info(
+            "Price check successful for watch #{$watch->getId()}: {$price}" .
+            ($priceChanged ? " (CHANGED from {$oldPrice})" : "")
+        );
+
+        // Send notification if price changed
+        if ($priceChanged && $oldPrice !== null) {
+            $this->sendPriceChangeNotification($watch, $oldPrice, $price);
+        }
+    }
+
+    private function sendPriceChangeNotification(ProductWatch $watch, string $oldPrice, string $newPrice): void
+    {
+        try {
+            $oldFloat = (float) $oldPrice;
+            $newFloat = (float) $newPrice;
+
+            if ($newFloat < $oldFloat) {
+                $this->notificationService->notifyPriceDecrease($watch, $oldPrice, $newPrice);
+            } else {
+                $this->notificationService->notifyPriceIncrease($watch, $oldPrice, $newPrice);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error("Failed to send price change notification: " . $e->getMessage());
+        }
     }
 }

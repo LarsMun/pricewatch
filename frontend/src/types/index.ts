@@ -11,6 +11,7 @@ export interface ProductWatch {
   domain: string
   productName: string | null
   priceSelector: string
+  imageUrl: string | null
   currency: string
   currentPrice: string | null
   previousPrice: string | null
@@ -62,4 +63,35 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string
   password: string
+}
+
+export interface CreateWatchRequest {
+  url: string
+  priceSelector: string
+  productName?: string
+  currency?: string
+  imageUrl?: string
+}
+
+export interface AnalyzeUrlResponse {
+  success: boolean
+  url: string
+  domain: string
+  productName: string | null
+  price: string | null
+  currency: string
+  imageUrl: string | null
+  priceSelector: string | null
+  detectionMethod: 'jsonld' | 'css' | 'none'
+  availableSelectors: Array<{
+    selector: string
+    price: string
+    rawText: string
+    recommended?: boolean
+  }>
+  error?: string
+}
+
+export interface WatchDetailResponse extends ProductWatch {
+  priceChecks: PriceCheck[]
 }

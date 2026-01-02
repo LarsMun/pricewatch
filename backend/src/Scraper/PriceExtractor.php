@@ -27,9 +27,26 @@ class PriceExtractionResult
 class PriceExtractor
 {
     /**
-     * Extract price from HTML using a CSS selector.
+     * Extract price from HTML using a CSS selector or JSON-LD path.
+     *
+     * Selector formats:
+     * - CSS selector: ".price-class", "#price-id"
+     * - JSON-LD path: "jsonld:offers.price" (extracts from script[type="application/ld+json"])
      */
     public function extract(string $html, string $selector): PriceExtractionResult
+    {
+        // Check if this is a JSON-LD selector
+        if (str_starts_with($selector, 'jsonld:')) {
+            return $this->extractFromJsonLd($html, substr($selector, 7));
+        }
+
+        return $this->extractFromCss($html, $selector);
+    }
+
+    /**
+     * Extract price using CSS selector.
+     */
+    private function extractFromCss(string $html, string $selector): PriceExtractionResult
     {
         try {
             $crawler = new Crawler($html);
@@ -58,6 +75,100 @@ class PriceExtractor
         } catch (\Throwable $e) {
             return PriceExtractionResult::failure("Extraction error: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Extract price from JSON-LD structured data.
+     * Path format: "offers.price" navigates into the JSON structure.
+     * Handles @graph arrays by searching all items for the path.
+     */
+    private function extractFromJsonLd(string $html, string $path): PriceExtractionResult
+    {
+        try {
+            $crawler = new Crawler($html);
+            $scripts = $crawler->filter('script[type="application/ld+json"]');
+
+            if ($scripts->count() === 0) {
+                return PriceExtractionResult::failure("No JSON-LD scripts found on page");
+            }
+
+            $pathParts = explode('.', $path);
+
+            // Try each JSON-LD script
+            foreach ($scripts as $script) {
+                $json = trim($script->textContent);
+                $data = json_decode($json, true);
+
+                if (!is_array($data)) {
+                    continue;
+                }
+
+                // Handle @graph structure - search all items in the graph
+                if (isset($data['@graph']) && is_array($data['@graph'])) {
+                    foreach ($data['@graph'] as $item) {
+                        if (!is_array($item)) {
+                            continue;
+                        }
+                        $value = $this->getNestedValue($item, $pathParts);
+                        if ($value !== null) {
+                            $rawText = (string) $value;
+                            $price = $this->parsePrice($rawText);
+                            if ($price !== null) {
+                                return PriceExtractionResult::success($price, $rawText);
+                            }
+                        }
+                    }
+                }
+
+                // Also try direct path (non-graph structure)
+                $value = $this->getNestedValue($data, $pathParts);
+
+                if ($value !== null) {
+                    $rawText = (string) $value;
+                    $price = $this->parsePrice($rawText);
+
+                    if ($price !== null) {
+                        return PriceExtractionResult::success($price, $rawText);
+                    }
+                }
+            }
+
+            return PriceExtractionResult::failure("Path '$path' not found in JSON-LD data");
+
+        } catch (\Throwable $e) {
+            return PriceExtractionResult::failure("JSON-LD extraction error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Navigate nested array using dot-separated path.
+     * Handles arrays by trying the first element.
+     */
+    private function getNestedValue(array $data, array $pathParts): mixed
+    {
+        $current = $data;
+
+        foreach ($pathParts as $key) {
+            if (!is_array($current)) {
+                return null;
+            }
+
+            // If current is a sequential array, try first element
+            if (array_is_list($current) && !empty($current)) {
+                $current = $current[0];
+                if (!is_array($current)) {
+                    return null;
+                }
+            }
+
+            if (!array_key_exists($key, $current)) {
+                return null;
+            }
+
+            $current = $current[$key];
+        }
+
+        return $current;
     }
 
     /**

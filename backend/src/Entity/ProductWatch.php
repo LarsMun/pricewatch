@@ -46,6 +46,9 @@ class ProductWatch
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $productSelector = null;
 
+    #[ORM\Column(length: 2048, nullable: true)]
+    private ?string $imageUrl = null;
+
     #[ORM\Column(length: 3, options: ['default' => 'EUR'])]
     private string $currency = 'EUR';
 
@@ -119,7 +122,6 @@ class ProductWatch
     public function setUser(?User $user): static
     {
         $this->user = $user;
-
         return $this;
     }
 
@@ -132,7 +134,6 @@ class ProductWatch
     {
         $this->url = $url;
         $this->domain = parse_url($url, PHP_URL_HOST) ?? '';
-
         return $this;
     }
 
@@ -149,7 +150,6 @@ class ProductWatch
     public function setProductName(?string $productName): static
     {
         $this->productName = $productName;
-
         return $this;
     }
 
@@ -161,7 +161,6 @@ class ProductWatch
     public function setPriceSelector(string $priceSelector): static
     {
         $this->priceSelector = $priceSelector;
-
         return $this;
     }
 
@@ -173,7 +172,17 @@ class ProductWatch
     public function setProductSelector(?string $productSelector): static
     {
         $this->productSelector = $productSelector;
+        return $this;
+    }
 
+    public function getImageUrl(): ?string
+    {
+        return $this->imageUrl;
+    }
+
+    public function setImageUrl(?string $imageUrl): static
+    {
+        $this->imageUrl = $imageUrl;
         return $this;
     }
 
@@ -185,7 +194,6 @@ class ProductWatch
     public function setCurrency(string $currency): static
     {
         $this->currency = $currency;
-
         return $this;
     }
 
@@ -197,7 +205,6 @@ class ProductWatch
     public function setCurrentPrice(?string $currentPrice): static
     {
         $this->currentPrice = $currentPrice;
-
         return $this;
     }
 
@@ -209,7 +216,6 @@ class ProductWatch
     public function setPreviousPrice(?string $previousPrice): static
     {
         $this->previousPrice = $previousPrice;
-
         return $this;
     }
 
@@ -221,7 +227,6 @@ class ProductWatch
     public function setOriginalPrice(?string $originalPrice): static
     {
         $this->originalPrice = $originalPrice;
-
         return $this;
     }
 
@@ -233,7 +238,6 @@ class ProductWatch
     public function setLastSeenRawText(?string $lastSeenRawText): static
     {
         $this->lastSeenRawText = $lastSeenRawText;
-
         return $this;
     }
 
@@ -245,7 +249,6 @@ class ProductWatch
     public function setParseRuleJson(?array $parseRuleJson): static
     {
         $this->parseRuleJson = $parseRuleJson;
-
         return $this;
     }
 
@@ -257,7 +260,6 @@ class ProductWatch
     public function setSelectorContextHtml(?string $selectorContextHtml): static
     {
         $this->selectorContextHtml = $selectorContextHtml;
-
         return $this;
     }
 
@@ -269,7 +271,6 @@ class ProductWatch
     public function setCheckMethod(CheckMethod $checkMethod): static
     {
         $this->checkMethod = $checkMethod;
-
         return $this;
     }
 
@@ -281,14 +282,12 @@ class ProductWatch
     public function incrementFailures(): static
     {
         $this->consecutiveFailures++;
-
         return $this;
     }
 
     public function resetFailures(): static
     {
         $this->consecutiveFailures = 0;
-
         return $this;
     }
 
@@ -305,7 +304,6 @@ class ProductWatch
     public function setNextCheckAt(\DateTimeImmutable $nextCheckAt): static
     {
         $this->nextCheckAt = $nextCheckAt;
-
         return $this;
     }
 
@@ -316,9 +314,7 @@ class ProductWatch
     {
         $baseInterval = 12 * 60 * 60; // 12 hours in seconds
         $jitter = random_int(0, 60 * 60); // 0-60 minutes in seconds
-
-        $this->nextCheckAt = new \DateTimeImmutable('+' . ($baseInterval + $jitter) . ' seconds');
-
+        $this->nextCheckAt = new \DateTimeImmutable('+'.($baseInterval + $jitter).' seconds');
         return $this;
     }
 
@@ -330,7 +326,6 @@ class ProductWatch
     public function setLastCheckedAt(?\DateTimeImmutable $lastCheckedAt): static
     {
         $this->lastCheckedAt = $lastCheckedAt;
-
         return $this;
     }
 
@@ -342,7 +337,6 @@ class ProductWatch
     public function setLastSuccessfulCheckAt(?\DateTimeImmutable $lastSuccessfulCheckAt): static
     {
         $this->lastSuccessfulCheckAt = $lastSuccessfulCheckAt;
-
         return $this;
     }
 
@@ -354,14 +348,12 @@ class ProductWatch
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
-
         return $this;
     }
 
     public function pause(): static
     {
         $this->isActive = false;
-
         return $this;
     }
 
@@ -369,7 +361,6 @@ class ProductWatch
     {
         $this->isActive = true;
         $this->scheduleNextCheck();
-
         return $this;
     }
 
@@ -381,7 +372,6 @@ class ProductWatch
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -397,7 +387,6 @@ class ProductWatch
             $this->priceChecks->add($priceCheck);
             $priceCheck->setProductWatch($this);
         }
-
         return $this;
     }
 
@@ -413,7 +402,6 @@ class ProductWatch
             $this->notifications->add($notification);
             $notification->setProductWatch($this);
         }
-
         return $this;
     }
 
@@ -436,7 +424,6 @@ class ProductWatch
         // Real change
         $this->previousPrice = $this->currentPrice;
         $this->currentPrice = $newPrice;
-
         return true;
     }
 }

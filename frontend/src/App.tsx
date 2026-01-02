@@ -5,6 +5,9 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
+import WatchDetailPage from './pages/WatchDetailPage'
+import BookmarkletPage from './pages/BookmarkletPage'
+import AddWatchPage from './pages/AddWatchPage'
 
 function App() {
   return (
@@ -19,6 +22,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/watch/:id"
+            element={
+              <ProtectedRoute>
+                <WatchDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookmarklet"
+            element={
+              <ProtectedRoute>
+                <BookmarkletPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/add-watch"
+            element={
+              <ProtectedRoute>
+                <AddWatchPage />
               </ProtectedRoute>
             }
           />

@@ -1,0 +1,274 @@
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useWatch, useDeleteWatch, useToggleWatch } from '../hooks/useWatches'
+
+function formatPrice(price: string | null, currency: string): string {
+  if (!price) return '-'
+  const num = parseFloat(price)
+  return new Intl.NumberFormat('nl-NL', {
+    style: 'currency',
+    currency,
+  }).format(num)
+}
+
+function formatDate(date: string | null): string {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatShortDate(date: string): string {
+  return new Date(date).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export default function WatchDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const watchId = parseInt(id || '0', 10)
+
+  const { data: watch, isLoading, error } = useWatch(watchId)
+  const deleteWatch = useDeleteWatch()
+  const toggleWatch = useToggleWatch()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">Laden...</div>
+      </div>
+    )
+  }
+
+  if (error || !watch) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
+            {error?.message || 'Watch niet gevonden'}
+          </div>
+          <Link to="/dashboard" className="text-primary-600 hover:underline mt-4 inline-block">
+            Terug naar dashboard
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const handleDelete = async () => {
+    if (confirm('Weet je zeker dat je deze watch wilt verwijderen?')) {
+      await deleteWatch.mutateAsync(watch.id)
+      navigate('/dashboard')
+    }
+  }
+
+  const handleToggle = () => {
+    toggleWatch.mutate({ id: watch.id, isActive: !watch.isActive })
+  }
+
+  const priceChange = watch.currentPrice && watch.originalPrice
+    ? parseFloat(watch.currentPrice) - parseFloat(watch.originalPrice)
+    : null
+
+  const priceChangePercent = priceChange && watch.originalPrice
+    ? (priceChange / parseFloat(watch.originalPrice)) * 100
+    : null
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <Link to="/dashboard" className="text-primary-600 hover:underline text-sm mb-2 inline-block">
+            &larr; Terug naar dashboard
+          </Link>
+          <div className="flex justify-between items-start">
+            <div className="flex gap-4">
+              {/* Product image */}
+              {watch.imageUrl ? (
+                <img
+                  src={watch.imageUrl}
+                  alt={watch.productName || 'Product'}
+                  className="w-24 h-24 object-cover rounded-lg bg-gray-100 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {watch.productName || watch.domain}
+                </h1>
+                <a
+                  href={watch.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-primary-600 text-sm"
+                >
+                  {watch.url}
+                </a>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleToggle}
+                disabled={toggleWatch.isPending}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                {watch.isActive ? 'Pauzeren' : 'Hervatten'}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteWatch.isPending}
+                className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Price summary */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Prijsoverzicht</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <span className="text-gray-500 text-sm block">Huidige prijs</span>
+              <span className="text-2xl font-bold text-gray-900">
+                {formatPrice(watch.currentPrice, watch.currency)}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 text-sm block">Originele prijs</span>
+              <span className="text-xl text-gray-700">
+                {formatPrice(watch.originalPrice, watch.currency)}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 text-sm block">Verschil</span>
+              {priceChange !== null ? (
+                <span className={`text-xl font-medium ${priceChange < 0 ? 'text-green-600' : priceChange > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                  {priceChange < 0 ? '' : '+'}{formatPrice(priceChange.toString(), watch.currency)}
+                  {priceChangePercent !== null && (
+                    <span className="text-sm ml-1">
+                      ({priceChangePercent > 0 ? '+' : ''}{priceChangePercent.toFixed(1)}%)
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xl">-</span>
+              )}
+            </div>
+            <div>
+              <span className="text-gray-500 text-sm block">Status</span>
+              {!watch.isActive ? (
+                <span className="text-gray-600">Gepauzeerd</span>
+              ) : watch.consecutiveFailures >= 5 ? (
+                <span className="text-red-600">Fout - site onbereikbaar</span>
+              ) : watch.consecutiveFailures > 0 ? (
+                <span className="text-yellow-600">{watch.consecutiveFailures}x mislukt</span>
+              ) : (
+                <span className="text-green-600">Actief</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Details</h2>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-500">CSS Selector</dt>
+              <dd className="font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded mt-1">
+                {watch.priceSelector}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Check methode</dt>
+              <dd className="text-gray-900 mt-1">{watch.checkMethod}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Laatst gecheckt</dt>
+              <dd className="text-gray-900 mt-1">{formatDate(watch.lastCheckedAt)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Volgende check</dt>
+              <dd className="text-gray-900 mt-1">{formatDate(watch.nextCheckAt)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Aangemaakt</dt>
+              <dd className="text-gray-900 mt-1">{formatDate(watch.createdAt)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Laatst gevonden tekst</dt>
+              <dd className="font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded mt-1 truncate">
+                {watch.lastSeenRawText || '-'}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        {/* Price history */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Prijshistorie</h2>
+          {watch.priceChecks && watch.priceChecks.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="pb-2">Datum</th>
+                    <th className="pb-2">Prijs</th>
+                    <th className="pb-2">Ruwe tekst</th>
+                    <th className="pb-2">Status</th>
+                    <th className="pb-2">Duur</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {watch.priceChecks.map((check) => (
+                    <tr key={check.id} className={!check.wasSuccessful ? 'bg-red-50' : ''}>
+                      <td className="py-2">{formatShortDate(check.checkedAt)}</td>
+                      <td className="py-2 font-medium">
+                        {check.wasSuccessful
+                          ? formatPrice(check.price, watch.currency)
+                          : '-'}
+                      </td>
+                      <td className="py-2 font-mono text-xs text-gray-600 max-w-xs truncate">
+                        {check.rawText || '-'}
+                      </td>
+                      <td className="py-2">
+                        {check.wasSuccessful ? (
+                          <span className="text-green-600">OK</span>
+                        ) : (
+                          <span className="text-red-600" title={check.errorMessage || ''}>
+                            Fout
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-gray-500">
+                        {check.durationMs ? `${check.durationMs}ms` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500">Nog geen prijschecks uitgevoerd.</p>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
