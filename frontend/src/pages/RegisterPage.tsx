@@ -6,6 +6,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { register } = useAuth()
@@ -14,6 +15,11 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!agreedToTerms) {
+      setError('Je moet akkoord gaan met de Algemene Voorwaarden en het Privacybeleid')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Wachtwoorden komen niet overeen')
@@ -85,6 +91,25 @@ export default function RegisterPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               required
             />
+          </div>
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <label htmlFor="terms" className="text-sm text-gray-600">
+              Ik ga akkoord met de{' '}
+              <Link to="/terms" className="text-primary-600 hover:underline" target="_blank">
+                Algemene Voorwaarden
+              </Link>
+              {' '}en het{' '}
+              <Link to="/privacy" className="text-primary-600 hover:underline" target="_blank">
+                Privacybeleid
+              </Link>
+            </label>
           </div>
           <button
             type="submit"

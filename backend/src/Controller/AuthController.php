@@ -91,4 +91,90 @@ class AuthController extends AbstractController
             'createdAt' => $user->getCreatedAt()->format('c'),
         ]);
     }
+
+    #[Route('/me', name: 'api_delete_account', methods: ['DELETE'])]
+    public function deleteAccount(EntityManagerInterface $entityManager): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        $entityManager->remove($user);
+        $entityManager->flush();
+
+        return $this->json(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/me/export', name: 'api_export_data', methods: ['GET'])]
+    public function exportData(): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        $watches = [];
+        foreach ($user->getProductWatches() as $watch) {
+            $priceChecks = [];
+            foreach ($watch->getPriceChecks() as $check) {
+                $priceChecks[] = [
+                    'id' => $check->getId(),
+                    'price' => $check->getPrice(),
+                    'rawText' => $check->getRawText(),
+                    'wasSuccessful' => $check->isWasSuccessful(),
+                    'httpStatus' => $check->getHttpStatus(),
+                    'durationMs' => $check->getDurationMs(),
+                    'errorMessage' => $check->getErrorMessage(),
+                    'checkedAt' => $check->getCheckedAt()->format('c'),
+                ];
+            }
+
+            $notifications = [];
+            foreach ($watch->getNotifications() as $notification) {
+                $notifications[] = [
+                    'id' => $notification->getId(),
+                    'type' => $notification->getType()->value,
+                    'oldPrice' => $notification->getOldPrice(),
+                    'newPrice' => $notification->getNewPrice(),
+                    'sentAt' => $notification->getSentAt()->format('c'),
+                ];
+            }
+
+            $watches[] = [
+                'id' => $watch->getId(),
+                'url' => $watch->getUrl(),
+                'domain' => $watch->getDomain(),
+                'productName' => $watch->getProductName(),
+                'priceSelector' => $watch->getPriceSelector(),
+                'imageUrl' => $watch->getImageUrl(),
+                'currency' => $watch->getCurrency(),
+                'currentPrice' => $watch->getCurrentPrice(),
+                'previousPrice' => $watch->getPreviousPrice(),
+                'originalPrice' => $watch->getOriginalPrice(),
+                'checkMethod' => $watch->getCheckMethod()->value,
+                'isActive' => $watch->isActive(),
+                'consecutiveFailures' => $watch->getConsecutiveFailures(),
+                'createdAt' => $watch->getCreatedAt()->format('c'),
+                'lastCheckedAt' => $watch->getLastCheckedAt()?->format('c'),
+                'priceChecks' => $priceChecks,
+                'notifications' => $notifications,
+            ];
+        }
+
+        $export = [
+            'exportedAt' => (new \DateTimeImmutable())->format('c'),
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'isVerified' => $user->isVerified(),
+                'createdAt' => $user->getCreatedAt()->format('c'),
+            ],
+            'watches' => $watches,
+        ];
+
+        $response = new JsonResponse($export);
+        $response->headers->set(
+            'Content-Disposition',
+            'attachment; filename="shopq-export-' . date('Y-m-d') . '.json"'
+        );
+
+        return $response;
+    }
 }

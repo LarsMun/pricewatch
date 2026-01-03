@@ -15,6 +15,8 @@ use Psr\Log\LoggerInterface;
 
 class PriceCheckService
 {
+    private const USER_AGENT = 'ShopQBot/1.0';
+
     public function __construct(
         private HttpEngine $httpEngine,
         private BrowserEngine $browserEngine,
@@ -23,6 +25,8 @@ class PriceCheckService
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private NotificationService $notificationService,
+        private DomainRateLimiter $rateLimiter,
+        private RobotsTxtChecker $robotsChecker,
     ) {}
 
     /**
@@ -42,12 +46,33 @@ class PriceCheckService
      */
     public function check(ProductWatch $watch): PriceCheck
     {
+        $url = $watch->getUrl();
+        $domain = $this->extractDomain($url);
         $engine = $this->getEngine($watch);
         $engineName = $watch->getCheckMethod()->value;
-        
-        $this->logger->info("Checking price for watch #{$watch->getId()} using {$engineName} engine: {$watch->getUrl()}");
 
-        $scrapeResult = $engine->fetch($watch->getUrl());
+        $this->logger->info("Checking price for watch #{$watch->getId()} using {$engineName} engine: {$url}");
+
+        // Check robots.txt compliance
+        if (!$this->robotsChecker->checkAndLog($url, self::USER_AGENT)) {
+            $this->logger->warning("URL blocked by robots.txt: {$url}");
+            return $this->createRateLimitedCheck($watch, 'URL blocked by robots.txt');
+        }
+
+        // Check domain rate limit
+        if (!$this->rateLimiter->consume($domain)) {
+            $this->logger->warning("Rate limit exceeded for domain: {$domain}");
+            return $this->createRateLimitedCheck($watch, 'Rate limit exceeded for domain');
+        }
+
+        // Respect crawl-delay if specified in robots.txt
+        $crawlDelay = $this->robotsChecker->getCrawlDelay($url, self::USER_AGENT);
+        if ($crawlDelay !== null && $crawlDelay > 0) {
+            $this->logger->debug("Respecting crawl-delay of {$crawlDelay}s for {$domain}");
+            usleep((int) ($crawlDelay * 1000000));
+        }
+
+        $scrapeResult = $engine->fetch($url);
 
         $priceCheck = new PriceCheck();
         $priceCheck->setProductWatch($watch);
@@ -155,5 +180,31 @@ class PriceCheckService
         } catch (\Throwable $e) {
             $this->logger->error("Failed to send price change notification: " . $e->getMessage());
         }
+    }
+
+    private function extractDomain(string $url): string
+    {
+        $parsed = parse_url($url);
+        return $parsed['host'] ?? 'unknown';
+    }
+
+    private function createRateLimitedCheck(ProductWatch $watch, string $reason): PriceCheck
+    {
+        $priceCheck = new PriceCheck();
+        $priceCheck->setProductWatch($watch);
+        $priceCheck->setWasSuccessful(false);
+        $priceCheck->setErrorMessage($reason);
+        $priceCheck->setCheckedAt(new \DateTimeImmutable());
+        $priceCheck->setDurationMs(0);
+
+        // Don't increment failures for rate limiting - it's not a site problem
+        // but do schedule next check further out
+        $watch->setLastCheckedAt(new \DateTimeImmutable());
+        $watch->scheduleNextCheck();
+
+        $this->entityManager->persist($priceCheck);
+        $this->entityManager->flush();
+
+        return $priceCheck;
     }
 }
