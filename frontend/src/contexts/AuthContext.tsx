@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { User } from '../types'
 
@@ -16,21 +17,14 @@ const AuthContext = createContext<AuthContextType | null>(null)
 const TOKEN_KEY = 'pricewatch_token'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    if (token) {
-      fetchUser()
-    } else {
-      setIsLoading(false)
-    }
-  }, [token])
-
-  async function fetchUser() {
+  async function fetchUser(authToken: string) {
     try {
-      const userData = await api.get<User>('/api/me', token!)
+      const userData = await api.get<User>('/api/me', authToken)
       setUser(userData)
     } catch {
       // Token is invalid, clear it
@@ -42,6 +36,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  useEffect(() => {
+    if (token) {
+      fetchUser(token)
+    } else {
+      setIsLoading(false)
+    }
+  }, [token])
+
+  // Sync auth state when another tab changes the token
+  useEffect(() => {
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key === TOKEN_KEY) {
+        const newToken = e.newValue
+        if (newToken !== token) {
+          queryClient.clear()
+          setUser(null)
+          setToken(newToken)
+          if (newToken) {
+            setIsLoading(true)
+          }
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [token, queryClient])
+
   async function login(email: string, password: string) {
     const response = await api.post<{ token: string }>('/api/login', {
       username: email,
@@ -49,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     localStorage.setItem(TOKEN_KEY, response.token)
+    setIsLoading(true) // Prevent redirect while fetching user
     setToken(response.token)
   }
 
@@ -62,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)
+    queryClient.clear()
   }
 
   return (

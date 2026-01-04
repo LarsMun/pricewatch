@@ -1,10 +1,10 @@
-# PrijsWacht - Setup Voortgang
+# ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-01
+> Laatst bijgewerkt: 2026-01-04
 
-## Huidige Status: Fase 1 & 2 Compleet
+## Huidige Status: MVP+ Compleet (Fase 1-4)
 
-Authenticatie, CRUD API en scraping core zijn volledig werkend.
+Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie, CRUD API, scraping, notificaties, bookmarklet, en compliance features.
 
 ---
 
@@ -30,23 +30,29 @@ Authenticatie, CRUD API en scraping core zijn volledig werkend.
 - [x] Volumes voor persistente data (mariadb, vendor, node_modules)
 - [x] Apache AllowOverride + .htaccess voor Symfony routing
 
-### Fase 1: Authenticatie (Compleet)
+### Fase 1: Authenticatie (Compleet) ✅
 
 #### Backend API Endpoints
 | Endpoint | Method | Auth | Beschrijving |
 |----------|--------|------|--------------|
-| `/api/register` | POST | - | Registreer nieuwe gebruiker |
+| `/api/register` | POST | - | Registreer nieuwe gebruiker + stuurt verificatie email |
 | `/api/login` | POST | - | Login, retourneert JWT token |
 | `/api/me` | GET | JWT | Huidige gebruiker info |
+| `/api/me` | DELETE | JWT | Account verwijderen (GDPR) |
+| `/api/me/export` | GET | JWT | Data exporteren (GDPR) |
+| `/api/verify-email` | POST | - | Verifieer email met token |
+| `/api/resend-verification` | POST | JWT | Verstuur verificatie email opnieuw |
 
 #### Frontend Auth
-- [x] `AuthContext` - Token opslag (localStorage), user state
+- [x] `AuthContext` - Token opslag (localStorage), user state, multi-tab sync
 - [x] `ProtectedRoute` - Redirect naar /login als niet ingelogd
 - [x] `LoginPage` - Werkende login met error handling
-- [x] `RegisterPage` - Werkende registratie met validatie
-- [x] `DashboardPage` - Toont user email + uitlogknop
+- [x] `RegisterPage` - Werkende registratie met validatie + ToS checkbox + verificatie melding
+- [x] `DashboardPage` - Watch overzicht met grid layout
+- [x] `VerifyEmailPage` - Verificatie link handling
+- [x] `VerificationBanner` - Waarschuwing voor niet-geverifieerde gebruikers
 
-### Fase 2: Scraping Core (Compleet)
+### Fase 2: Scraping Core (Compleet) ✅
 
 #### ProductWatch CRUD API
 | Endpoint | Method | Auth | Beschrijving |
@@ -56,59 +62,95 @@ Authenticatie, CRUD API en scraping core zijn volledig werkend.
 | `/api/watches/{id}` | GET | JWT | Watch detail + prijshistorie |
 | `/api/watches/{id}` | PATCH | JWT | Update watch |
 | `/api/watches/{id}` | DELETE | JWT | Verwijder watch |
+| `/api/watches/analyze` | POST | JWT | URL analyseren voor auto-detectie |
+| `/api/watches/check-all` | POST | JWT | Alle watches direct checken |
+| `/api/watches/validate` | POST | - | Selector valideren op URL |
+| `/api/bookmarklet.js` | GET | - | Bookmarklet JavaScript |
 
 #### Scraper Services
 - [x] `ScrapeEngineInterface` - Contract voor scrape engines
 - [x] `HttpEngine` - Fetch pages via Symfony HttpClient
-- [x] `PriceExtractor` - CSS selector → prijs parsing
+- [x] `BrowserEngine` - Headless Chrome via Symfony Panther
+- [x] `PriceExtractor` - CSS selector + JSON-LD → prijs parsing
+- [x] `ImageExtractor` - Product afbeelding extractie
 - [x] `PriceCheckService` - Business logic, debounce, failure tracking
+- [x] `UrlAnalyzerService` - Auto-detectie van product info
+- [x] `NotificationService` - Email notificaties versturen
+- [x] `RobotsTxtChecker` - robots.txt compliance
+- [x] `DomainRateLimiter` - Per-domein rate limiting
 
 #### CLI Commands
 ```bash
 # Test scraper met URL + selector
-docker exec pricewatch-php php bin/console app:test-scrape "https://example.com" ".price"
+docker exec shopq-php php bin/console app:test-scrape "https://example.com" ".price"
 
 # Check alle due watches
-docker exec pricewatch-php php bin/console app:check-prices
+docker exec shopq-php php bin/console app:check-prices
 
 # Check specifieke watch
-docker exec pricewatch-php php bin/console app:check-prices --watch=1
+docker exec shopq-php php bin/console app:check-prices --watch=1
 ```
+
+---
+
+## Voltooide Fases
+
+### Fase 2b: Rate Limiting & Compliance ✅
+- [x] Per-domain throttling (10 req/uur via DomainRateLimiter)
+- [x] robots.txt compliance checking (RobotsTxtChecker)
+- [x] Crawl-delay respect
+
+### Fase 3: Notificaties ✅
+- [x] `NotificationService`
+- [x] Email templates (price_decrease, price_increase, site_broken)
+- [x] Debounce logic (voorkomt spam bij flapping prices)
+- [x] Mailhog integratie voor development
+
+### Fase 4: Frontend Uitbreiding ✅
+- [x] Watch list view met echte data (WatchList component)
+- [x] Watch detail + prijshistorie (WatchDetailPage)
+- [x] Add watch wizard (AddWatchModal)
+- [x] Privacy Policy, Terms of Service, Contact pagina's
+- [x] Footer met juridische links
+
+### Fase 5: Bookmarklet ✅
+- [x] Bookmarklet JavaScript code (BookmarkletController)
+- [x] Selector generatie logic
+- [x] `/api/watches/validate` endpoint
+- [x] BookmarkletPage met installatie-instructies
+
+### Fase 6: Browser Engine ✅
+- [x] `BrowserEngine` met Symfony Panther (headless Chrome)
+- [x] Auto-fallback voor JavaScript-rendered sites
+
+### Fase 7: Email Verificatie ✅
+- [x] `EmailVerificationService` - Token generatie, verificatie, email verzending
+- [x] `verification.html.twig` - Email template voor verificatie
+- [x] User entity uitgebreid met `verificationToken` en `verificationExpiresAt`
+- [x] Verificatie endpoints (`/api/verify-email`, `/api/resend-verification`)
+- [x] Onverifieerde gebruikers kunnen geen watches aanmaken
+- [x] Frontend `VerifyEmailPage` voor verificatie link handling
+- [x] Frontend `VerificationBanner` met resend functionaliteit
+- [x] Multi-tab authenticatie synchronisatie
+- [x] React Query cache clearing bij logout
 
 ---
 
 ## Wat Nog Moet Gebeuren
 
-### Fase 2b: Rate Limiting (optioneel)
-- [ ] Per-domain throttling
-- [ ] Configurable delays tussen requests
-
-### Fase 3: Notificaties
-- [ ] `NotificationService`
-- [ ] Email templates (price_decrease, price_increase, site_broken)
-- [ ] Debounce logic (voorkomt spam bij flapping prices)
-
-### Fase 4: Frontend Uitbreiding
-- [ ] Watch list view met echte data
-- [ ] Watch detail + prijshistorie grafiek
-- [ ] Add watch formulier
-
-### Fase 5: Bookmarklet
-- [ ] Bookmarklet JavaScript code
-- [ ] Selector generatie logic
-- [ ] `/api/watches/validate` endpoint
-- [ ] Confirmation flow in React
-
-### Fase 6: Browser Engine (voor SPA sites)
-- [ ] `BrowserEngine` met Playwright/Puppeteer
-- [ ] Fallback voor sites die JavaScript vereisen (bol.com, Amazon)
+### Toekomstige Uitbreidingen
+- [ ] Wachtwoord reset flow
+- [ ] Unit & integration tests
+- [ ] API documentatie (Swagger/OpenAPI)
+- [ ] Productie deployment configuratie
+- [ ] Cron job setup documentatie
 
 ---
 
 ## Project Structuur
 
 ```
-pricewatch/
+shopq/
 ├── docker-compose.yml
 ├── docker/
 │   ├── php/
@@ -124,6 +166,7 @@ pricewatch/
 │   │   │   ├── doctrine.yaml
 │   │   │   ├── security.yaml
 │   │   │   ├── lexik_jwt_authentication.yaml
+│   │   │   ├── rate_limiter.yaml
 │   │   │   └── ...
 │   │   └── jwt/
 │   │       ├── private.pem
@@ -138,7 +181,8 @@ pricewatch/
 │       │   └── TestScrapeCommand.php
 │       ├── Controller/
 │       │   ├── AuthController.php
-│       │   └── ProductWatchController.php
+│       │   ├── ProductWatchController.php
+│       │   └── BookmarkletController.php
 │       ├── Entity/
 │       │   ├── User.php
 │       │   ├── ProductWatch.php
@@ -155,9 +199,16 @@ pricewatch/
 │       ├── Scraper/
 │       │   ├── ScrapeEngineInterface.php
 │       │   ├── HttpEngine.php
-│       │   └── PriceExtractor.php
+│       │   ├── BrowserEngine.php
+│       │   ├── PriceExtractor.php
+│       │   └── ImageExtractor.php
 │       └── Service/
-│           └── PriceCheckService.php
+│           ├── PriceCheckService.php
+│           ├── NotificationService.php
+│           ├── EmailVerificationService.php
+│           ├── UrlAnalyzerService.php
+│           ├── RobotsTxtChecker.php
+│           └── DomainRateLimiter.php
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts
@@ -167,20 +218,35 @@ pricewatch/
 │       ├── api/
 │       │   └── client.ts
 │       ├── components/
-│       │   └── ProtectedRoute.tsx
+│       │   ├── ProtectedRoute.tsx
+│       │   ├── WatchList.tsx
+│       │   ├── AddWatchModal.tsx
+│       │   ├── VerificationBanner.tsx
+│       │   └── Footer.tsx
 │       ├── contexts/
 │       │   └── AuthContext.tsx
+│       ├── hooks/
+│       │   └── useWatches.ts
 │       ├── pages/
 │       │   ├── HomePage.tsx
 │       │   ├── LoginPage.tsx
 │       │   ├── RegisterPage.tsx
-│       │   └── DashboardPage.tsx
+│       │   ├── DashboardPage.tsx
+│       │   ├── AddWatchPage.tsx
+│       │   ├── WatchDetailPage.tsx
+│       │   ├── BookmarkletPage.tsx
+│       │   ├── VerifyEmailPage.tsx
+│       │   ├── PrivacyPage.tsx
+│       │   ├── TermsPage.tsx
+│       │   └── ContactPage.tsx
 │       └── types/
 │           └── index.ts
 └── docs/
+    ├── technische-documentatie.md
     ├── prijsmonitor-specificatie-v3.md
     ├── prijswacht-entities.md
-    └── setup-voortgang.md
+    ├── setup-voortgang.md
+    └── codeManifest.md
 ```
 
 ---
@@ -261,13 +327,12 @@ docker exec pricewatch-mariadb mariadb-dump -u pricewatch -ppricewatch pricewatc
 
 ## Bekende Beperkingen
 
-### HTTP Engine
-De huidige `HttpEngine` werkt alleen met server-side rendered HTML. Sites die prijzen via JavaScript laden (SPA's) worden niet ondersteund:
-- bol.com - Prijzen via React
-- Amazon - Prijzen via JavaScript
-- Veel moderne webshops
+### Dual Engine Support ✅
+De applicatie heeft nu twee scrape engines:
+- **HttpEngine** - Voor statische HTML sites (snel, efficiënt)
+- **BrowserEngine** - Voor JavaScript-rendered sites (Symfony Panther + headless Chrome)
 
-**Oplossing**: Later een `BrowserEngine` toevoegen met headless browser (Playwright).
+Gebruikers kunnen per watch kiezen welke engine te gebruiken.
 
 ### Price Parsing
 De `PriceExtractor` ondersteunt:
@@ -275,10 +340,16 @@ De `PriceExtractor` ondersteunt:
 - `19.99` → `19.99`
 - `1.299,00` → `1299.00`
 - `1,299.00` → `1299.00`
+- JSON-LD Product schema data
 
 Niet ondersteund:
 - Prijzen met tekst erbij ("vanaf €19,99")
 - Meerdere prijzen in één element
+
+### Rate Limiting
+Per-domein rate limiting is actief:
+- Maximum 10 requests per domein per uur
+- robots.txt wordt gerespecteerd
 
 ---
 
@@ -302,10 +373,11 @@ De API URL wordt geconfigureerd via Vite proxy in `vite.config.ts`.
 
 ## Git Repository
 
-**URL**: https://github.com/LarsMun/pricewatch
+**URL**: https://github.com/LarsMun/shopq
 
 ### Recente Commits
+- `837a1bf` - Add legal compliance, GDPR features, and scraping safeguards
+- `45d9661` - Add URL analyzer wizard, bookmarklet, and image support
+- `7333320` - Update documentation with Phase 1 & 2 progress
 - `c180a03` - Add scraping core (Phase 2)
 - `4269ea8` - Add authentication API and frontend integration
-- `ebc2131` - Add .vite/ to gitignore
-- `3bb87d4` - Initial commit: Pricewatch application

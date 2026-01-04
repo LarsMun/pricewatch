@@ -1,8 +1,8 @@
-# PrijsWacht - Doctrine Entities
+# ShopQ - Doctrine Entities
 
 ## Overzicht
 
-Dit document bevat de complete Doctrine entity definities voor PrijsWacht. Alle entities gebruiken PHP 8 attributes syntax.
+Dit document bevat de complete Doctrine entity definities voor ShopQ (voorheen PrijsWacht). Alle entities gebruiken PHP 8 attributes syntax.
 
 ### Entities
 
@@ -55,6 +55,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column]
     private bool $isVerified = false;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $verificationToken = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $verificationExpiresAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
@@ -128,6 +134,43 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->isVerified = $isVerified;
         return $this;
+    }
+
+    public function getVerificationToken(): ?string
+    {
+        return $this->verificationToken;
+    }
+
+    public function getVerificationExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->verificationExpiresAt;
+    }
+
+    public function generateVerificationToken(): void
+    {
+        $this->verificationToken = bin2hex(random_bytes(32));
+        $this->verificationExpiresAt = new \DateTimeImmutable('+24 hours');
+    }
+
+    public function clearVerificationToken(): void
+    {
+        $this->verificationToken = null;
+        $this->verificationExpiresAt = null;
+    }
+
+    public function isVerificationTokenValid(string $token): bool
+    {
+        if ($this->verificationToken !== $token) {
+            return false;
+        }
+        return $this->verificationExpiresAt !== null
+            && $this->verificationExpiresAt > new \DateTimeImmutable();
+    }
+
+    public function verify(): void
+    {
+        $this->isVerified = true;
+        $this->clearVerificationToken();
     }
 
     public function getCreatedAt(): ?\DateTimeImmutable
@@ -213,6 +256,9 @@ class ProductWatch
 
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $productName = null;
+
+    #[ORM\Column(length: 2048, nullable: true)]
+    private ?string $imageUrl = null;
 
     #[ORM\Column(length: 500)]
     #[Assert\NotBlank]
@@ -322,6 +368,17 @@ class ProductWatch
     public function setProductName(?string $productName): static
     {
         $this->productName = $productName;
+        return $this;
+    }
+
+    public function getImageUrl(): ?string
+    {
+        return $this->imageUrl;
+    }
+
+    public function setImageUrl(?string $imageUrl): static
+    {
+        $this->imageUrl = $imageUrl;
         return $this;
     }
 
@@ -1042,5 +1099,5 @@ src/
 
 ---
 
-*Document versie: 1.0*
-*Laatst bijgewerkt: 2024-12-31*
+*Document versie: 1.1*
+*Laatst bijgewerkt: 2026-01-04*

@@ -1,26 +1,31 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
+import { api } from '../api/client'
 
-export default function RegisterPage() {
-  const [email, setEmail] = useState('')
+export default function ResetPasswordPage() {
+  const [searchParams] = useSearchParams()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isRegistered, setIsRegistered] = useState(false)
-  const { register } = useAuth()
-  const navigate = useNavigate()
+  const [status, setStatus] = useState<'form' | 'success' | 'invalid'>('form')
+  const tokenChecked = useRef(false)
+
+  const token = searchParams.get('token')
+
+  useEffect(() => {
+    if (tokenChecked.current) return
+    tokenChecked.current = true
+
+    if (!token) {
+      setStatus('invalid')
+      setError('Geen reset token gevonden')
+    }
+  }, [token])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (!agreedToTerms) {
-      setError('Je moet akkoord gaan met de Algemene Voorwaarden en het Privacybeleid')
-      return
-    }
 
     if (password !== confirmPassword) {
       setError('Wachtwoorden komen niet overeen')
@@ -35,35 +40,56 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await register(email, password)
-      setIsRegistered(true)
+      await api.post('/api/reset-password', { token, password })
+      setStatus('success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registratie mislukt')
+      setError(err instanceof Error ? err.message : 'Wachtwoord resetten mislukt')
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (isRegistered) {
+  if (status === 'invalid') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold mb-2 text-red-700">Ongeldige link</h1>
+          <p className="text-gray-600 mb-6">{error || 'Deze reset link is ongeldig of verlopen.'}</p>
+          <Link
+            to="/forgot-password"
+            className="inline-block py-3 px-6 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+          >
+            Nieuwe link aanvragen
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'success') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Check je e-mail!</h1>
+          <h1 className="text-2xl font-bold mb-2 text-green-700">Wachtwoord gewijzigd!</h1>
           <p className="text-gray-600 mb-6">
-            We hebben een verificatielink gestuurd naar <strong>{email}</strong>.
-            Klik op de link in de e-mail om je account te activeren.
+            Je wachtwoord is succesvol gewijzigd. Je kunt nu inloggen met je nieuwe wachtwoord.
           </p>
-          <button
-            onClick={() => navigate('/dashboard')}
+          <Link
+            to="/login"
             className="inline-block py-3 px-6 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
-            Ga naar dashboard
-          </button>
+            Naar inloggen
+          </Link>
         </div>
       </div>
     )
@@ -72,7 +98,10 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6">Registreren</h1>
+        <h1 className="text-2xl font-bold text-center mb-2">Nieuw wachtwoord instellen</h1>
+        <p className="text-center text-gray-600 mb-6">
+          Kies een nieuw wachtwoord voor je account.
+        </p>
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
@@ -80,21 +109,8 @@ export default function RegisterPage() {
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              E-mailadres
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              required
-            />
-          </div>
-          <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Wachtwoord
+              Nieuw wachtwoord
             </label>
             <input
               type="password"
@@ -118,39 +134,14 @@ export default function RegisterPage() {
               required
             />
           </div>
-          <div className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              id="terms"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-            />
-            <label htmlFor="terms" className="text-sm text-gray-600">
-              Ik ga akkoord met de{' '}
-              <Link to="/terms" className="text-primary-600 hover:underline" target="_blank">
-                Algemene Voorwaarden
-              </Link>
-              {' '}en het{' '}
-              <Link to="/privacy" className="text-primary-600 hover:underline" target="_blank">
-                Privacybeleid
-              </Link>
-            </label>
-          </div>
           <button
             type="submit"
             disabled={isLoading}
             className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Bezig...' : 'Registreren'}
+            {isLoading ? 'Bezig...' : 'Wachtwoord wijzigen'}
           </button>
         </form>
-        <p className="text-center mt-4 text-gray-600">
-          Al een account?{' '}
-          <Link to="/login" className="text-primary-600 hover:underline">
-            Log hier in
-          </Link>
-        </p>
       </div>
     </div>
   )

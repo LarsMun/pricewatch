@@ -125,6 +125,12 @@ class ProductWatchController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
+        if (!$user->isVerified()) {
+            return $this->json([
+                'error' => 'Verifieer eerst je e-mailadres voordat je watches kunt aanmaken'
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         $watch = new ProductWatch();
         $watch->setUser($user);
         $watch->setUrl($url);

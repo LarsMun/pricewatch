@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCheckAllWatches } from '../hooks/useWatches'
 import WatchList from '../components/WatchList'
 import AddWatchModal from '../components/AddWatchModal'
+import VerificationBanner from '../components/VerificationBanner'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -38,6 +39,8 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        <VerificationBanner />
+
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Mijn prijswatches</h2>
           <div className="flex items-center gap-3">

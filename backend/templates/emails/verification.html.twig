@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bevestig je e-mailadres</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+        .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        .note { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="margin: 0;">Welkom bij PrijsWacht!</h1>
+        <p style="margin: 5px 0 0 0;">Bevestig je e-mailadres</p>
+    </div>
+    <div class="content">
+        <p>Hoi,</p>
+        <p>Bedankt voor je registratie bij PrijsWacht! Klik op de onderstaande knop om je e-mailadres te bevestigen.</p>
+
+        <p style="text-align: center;">
+            <a href="{{ verifyUrl }}" class="button">Bevestig e-mailadres</a>
+        </p>
+
+        <div class="note">
+            <strong>Let op:</strong> Deze link is 24 uur geldig. Als de link niet werkt, kopieer dan de volgende URL in je browser:<br>
+            <small style="word-break: break-all;">{{ verifyUrl }}</small>
+        </div>
+    </div>
+    <div class="footer">
+        <p>Als je geen account hebt aangemaakt bij PrijsWacht, kun je deze e-mail negeren.</p>
+        <p>PrijsWacht - Automatische prijsmonitoring</p>
+    </div>
+</body>
+</html>

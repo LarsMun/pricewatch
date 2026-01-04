@@ -1,6 +1,6 @@
-# WhenDue Code Style Manifest
+# ShopQ Code Style Manifest
 
-> Dit document definieert de coding standards voor het WhenDue project.
+> Dit document definieert de coding standards voor het ShopQ project.
 > Claude Code en alle developers volgen deze regels.
 
 ## Kernprincipes
@@ -675,7 +675,7 @@ Voordat code klaar is voor review:
 
 ---
 
-## Frontend (React Native / Expo)
+## Frontend (React + TypeScript + Vite)
 
 De frontend volgt dezelfde kernprincipes maar met aangepaste limieten en patterns.
 
@@ -684,7 +684,7 @@ De frontend volgt dezelfde kernprincipes maar met aangepaste limieten en pattern
 ```
 Components: 150 lines max
 Hooks: 100 lines max
-Stores: 100 lines max
+Contexts: 100 lines max
 ```
 
 Kleiner dan backend omdat React components typisch meer gefocust zijn.
@@ -717,29 +717,29 @@ export function ItemCard({ item, onPress }: ItemCardProps) {
 
 ### State Management
 
-**Server state: TanStack Query**
+**Server state: TanStack React Query**
 ```tsx
-export function useItems(householdId: string) {
+export function useWatches() {
   return useQuery({
-    queryKey: queryKeys.householdItems(householdId),
-    queryFn: () => itemsApi.getItems(householdId),
+    queryKey: ['watches'],
+    queryFn: () => apiClient.get('/api/watches'),
   });
 }
 ```
 
-**Client state: Zustand**
+**Client state: React Context**
 ```tsx
-export const useAuthStore = create<AuthStore>((set) => ({
-  token: null,
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-  setToken: async (token) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-    set({ token });
-  },
-}));
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem('shopq_token')
+  );
+  // ...
+}
 ```
 
-**HARD RULE:** Geen mixing! Server data hoort in TanStack Query, niet in Zustand.
+**HARD RULE:** Geen mixing! Server data hoort in TanStack Query, niet in Context.
 
 ### API Layer
 
@@ -774,15 +774,13 @@ const createMutation = useMutation({
 
 ### Styling
 
-**NativeWind (Tailwind) only:**
+**Tailwind CSS only:**
 ```tsx
 // GOED
-<View className="flex-row items-center p-4 bg-gray-50">
+<div className="flex flex-row items-center p-4 bg-gray-50">
 
-// SLECHT — alleen als NativeWind niet kan
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row' }
-});
+// SLECHT — geen inline styles
+<div style={{ display: 'flex', flexDirection: 'row' }}>
 ```
 
 **Custom kleuren in tailwind.config.js:**
@@ -797,26 +795,23 @@ colors: {
 
 ```tsx
 // Custom hook voor data fetching
-export function useItem(itemId: string) {
+export function useWatch(watchId: string) {
   return useQuery({
-    queryKey: queryKeys.item(itemId),
-    queryFn: () => itemsApi.getItem(itemId),
-    enabled: !!itemId,
+    queryKey: ['watch', watchId],
+    queryFn: () => apiClient.get(`/api/watches/${watchId}`),
+    enabled: !!watchId,
   });
 }
 
-// Custom hook voor mutations met optimistic updates
-export function useCreateEvent(itemId: string) {
+// Custom hook voor mutations
+export function useCreateWatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: CreateEventRequest) =>
-      eventsApi.create(itemId, request),
-    onMutate: async (newEvent) => {
-      // Optimistic update logic
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.items });
+    mutationFn: (data: CreateWatchRequest) =>
+      apiClient.post('/api/watches', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watches'] });
     },
   });
 }
@@ -830,8 +825,8 @@ Voordat code klaar is voor review:
 - [ ] Geen component > 150 regels
 - [ ] Geen hook > 100 regels
 - [ ] Geen nesting > 3 levels
-- [ ] Server state in TanStack Query, client state in Zustand
-- [ ] Idempotency keys bij mutaties
-- [ ] NativeWind voor styling (geen inline StyleSheet)
+- [ ] Server state in TanStack Query, client state in Context
+- [ ] Tailwind CSS voor styling (geen inline styles)
 - [ ] Event handlers prefixed met `handle`
 - [ ] Props interface gedefinieerd
+- [ ] Responsive design (mobile-first)

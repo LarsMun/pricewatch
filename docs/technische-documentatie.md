@@ -1,14 +1,16 @@
-# PrijsWacht - Technische Documentatie
+# ShopQ - Technische Documentatie
 
-**Versie:** 1.0
+**Versie:** 2.1
 **Datum:** Januari 2026
-**Status:** Fase 1 & 2 compleet
+**Status:** MVP+ Compleet (Fase 1-4)
 
 ---
 
 ## Overzicht
 
-PrijsWacht is een Nederlandse prijsmonitor webapplicatie waarmee gebruikers productprijzen kunnen volgen op diverse webshops. De applicatie detecteert prijswijzigingen en stuurt e-mailnotificaties bij prijsdalingen, -stijgingen of wanneer websites onbereikbaar worden.
+ShopQ (voorheen PrijsWacht) is een Nederlandse prijsmonitor webapplicatie waarmee gebruikers productprijzen kunnen volgen op diverse webshops. De applicatie detecteert prijswijzigingen en stuurt e-mailnotificaties bij prijsdalingen, -stijgingen of wanneer websites onbereikbaar worden.
+
+De applicatie identificeert zichzelf als `ShopQBot/1.0` bij het scrapen en respecteert robots.txt richtlijnen.
 
 ### Technologie Stack
 
@@ -74,10 +76,18 @@ email: string (unique, 180 chars)
 password: string (bcrypt hash)
 roles: array
 isVerified: bool
+verificationToken: ?string (64 chars, for email verification)
+verificationExpiresAt: ?DateTimeImmutable (24h token expiry)
 createdAt: DateTimeImmutable
 
 // Relaties
 productWatches: OneToMany → ProductWatch
+
+// Methoden
+generateVerificationToken()     // Genereert 64-char hex token + 24h expiry
+clearVerificationToken()        // Wist token na verificatie
+isVerificationTokenValid(token) // Controleert token + expiry
+verify()                        // Markeert als geverifieerd
 ```
 
 #### ProductWatch
@@ -158,8 +168,12 @@ sentAt: DateTimeImmutable
 | Method | Endpoint | Beschrijving |
 |--------|----------|--------------|
 | POST | `/api/login` | JWT login (username, password) |
-| POST | `/api/register` | Account aanmaken (email, password) |
+| POST | `/api/register` | Account aanmaken (email, password, acceptTerms) + stuurt verificatie email |
 | GET | `/api/me` | Huidige gebruiker ophalen |
+| POST | `/api/me/delete` | Account verwijderen (GDPR) |
+| GET | `/api/me/export` | Gebruikersdata exporteren (GDPR) |
+| POST | `/api/verify-email` | Email verificatie met token |
+| POST | `/api/resend-verification` | Verstuur verificatie email opnieuw (JWT) |
 
 #### Watches (`ProductWatchController`)
 
@@ -219,6 +233,47 @@ analyze(string $url): UrlAnalysisResult
 1. JSON-LD Product data (schema.org)
 2. CSS selectors (`.price`, `[data-price]`, etc.)
 3. Meta tags (og:image, og:title)
+
+#### RobotsTxtChecker
+Controleert robots.txt compliance voor ethisch scrapen.
+
+```php
+isAllowed(string $url): bool
+getCrawlDelay(string $url): ?int
+```
+
+**Functies:**
+- Fetcht en parst robots.txt per domein
+- Respecteert `Crawl-delay` directives
+- Cache resultaten voor performance
+- Blokkeert scraping indien niet toegestaan
+
+#### DomainRateLimiter
+Per-domein rate limiting via Symfony RateLimiter.
+
+```php
+consume(string $domain): void  // throws TooManyRequestsHttpException
+```
+
+**Configuratie:**
+- Maximum 10 requests per domein per uur
+- Voorkomt blokkades door webshops
+- Geïntegreerd in PriceCheckService
+
+#### EmailVerificationService
+Email verificatie voor nieuwe accounts.
+
+```php
+sendVerificationEmail(User $user): void    // Genereert token + stuurt email
+verifyToken(string $token): ?User          // Valideert token, markeert user verified
+resendVerificationEmail(User $user): bool  // Genereert nieuw token + stuurt email
+```
+
+**Kenmerken:**
+- 64-karakter hex token (cryptografisch random)
+- 24 uur geldig
+- Onverifieerde gebruikers kunnen geen watches aanmaken
+- Email template met verificatie button
 
 ---
 
@@ -282,11 +337,15 @@ php bin/console app:check-prices --watch=123
 |-------|-----------|--------------|
 | `/` | HomePage | Landing page |
 | `/login` | LoginPage | Inloggen |
-| `/register` | RegisterPage | Registreren |
+| `/register` | RegisterPage | Registreren (met ToS checkbox) |
+| `/verify-email` | VerifyEmailPage | Email verificatie afhandeling |
 | `/dashboard` | DashboardPage | Overzicht watches |
 | `/add-watch` | AddWatchPage | Watch toevoegen |
-| `/watch/:id` | WatchDetailPage | Watch details |
+| `/watch/:id` | WatchDetailPage | Watch details + prijshistorie |
 | `/bookmarklet` | BookmarkletPage | Bookmarklet instructies |
+| `/privacy` | PrivacyPage | Privacybeleid (GDPR) |
+| `/terms` | TermsPage | Algemene voorwaarden |
+| `/contact` | ContactPage | Contactgegevens |
 
 ### Components
 
@@ -310,6 +369,23 @@ Features:
 - Selector keuze knoppen
 - Preview met afbeelding en prijs
 - Bewerkbare velden
+
+#### Footer
+Globale footer met juridische links:
+- Privacy Policy
+- Algemene Voorwaarden
+- Contact
+
+Wordt getoond op alle pagina's via App.tsx.
+
+#### VerificationBanner
+Gele waarschuwingsbanner voor onverifieerde gebruikers:
+- Toont melding dat email niet geverifieerd is
+- "Opnieuw versturen" knop met loading state
+- Succes/error feedback
+- Verdwijnt automatisch na verificatie
+
+Wordt getoond bovenaan DashboardPage.
 
 ### Hooks (React Query)
 
@@ -335,6 +411,9 @@ const { user, token, login, register, logout, isLoading } = useAuth()
 - JWT token in localStorage (`pricewatch_token`)
 - Auto-validatie bij mount
 - Protected routes via ProtectedRoute component
+- Multi-tab synchronisatie via storage events
+- React Query cache clearing bij logout
+- Race condition afhandeling bij login (isLoading state)
 
 ---
 
@@ -373,7 +452,10 @@ CREATE TABLE user (
     password VARCHAR(255) NOT NULL,
     roles JSON,
     is_verified BOOLEAN DEFAULT FALSE,
-    created_at DATETIME NOT NULL
+    verification_token VARCHAR(64) DEFAULT NULL,
+    verification_expires_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    INDEX idx_verification_token (verification_token)
 );
 
 -- Product watches
@@ -433,7 +515,15 @@ CREATE TABLE notification (
 
 ### Geïmplementeerd
 
+#### Authenticatie & Account
 - [x] Gebruikersregistratie en login (JWT)
+- [x] Email verificatie (24h token, blokkeer watches tot geverifieerd)
+- [x] Terms of Service acceptatie bij registratie
+- [x] Account verwijderen (GDPR)
+- [x] Data export (GDPR)
+- [x] Multi-tab authenticatie synchronisatie
+
+#### Prijsmonitoring
 - [x] Watch CRUD operaties
 - [x] Automatische prijsmonitoring (12-uurs interval)
 - [x] E-mail notificaties bij prijswijzigingen
@@ -448,18 +538,30 @@ CREATE TABLE notification (
 - [x] Bookmarklet tool
 - [x] URL analyzer wizard
 - [x] "Check all" functionaliteit
-- [x] Responsieve UI (Tailwind)
+
+#### Compliance & Ethisch Scrapen
+- [x] robots.txt compliance checking
+- [x] Per-domein rate limiting (10 req/uur)
+- [x] User-Agent identificatie (ShopQBot/1.0)
+- [x] Privacy Policy pagina
+- [x] Algemene Voorwaarden pagina
+- [x] Contact pagina
+
+#### Frontend
+- [x] Responsieve UI (Tailwind CSS)
+- [x] Footer met juridische links
+- [x] Affiliate disclaimer ("Bekijk op [domein]")
 
 ### Toekomstige uitbreidingen
 
-- [ ] Email verificatie
 - [ ] Wachtwoord reset
 - [ ] Notificatie voorkeuren (alleen dalingen)
-- [ ] Prijsdrempel alerts
+- [ ] Prijsdrempel alerts ("mail me als < €100")
 - [ ] Meerdere valuta's
 - [ ] Browser extensie
 - [ ] Prijsgrafiek visualisatie
-- [ ] Export functionaliteit
+- [ ] Test suite (unit + integration)
+- [ ] API documentatie (Swagger/OpenAPI)
 
 ---
 
@@ -498,6 +600,7 @@ Authorization: Bearer <jwt-token>
 **Publieke endpoints:**
 - `POST /api/login`
 - `POST /api/register`
+- `POST /api/verify-email`
 - `GET /api/bookmarklet.js`
 - `POST /api/watches/validate`
 
@@ -588,4 +691,4 @@ docker exec pricewatch-frontend npm run build
 
 ---
 
-*Laatst bijgewerkt: Januari 2026*
+*Laatst bijgewerkt: 4 Januari 2026*

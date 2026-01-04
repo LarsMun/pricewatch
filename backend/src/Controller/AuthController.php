@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\EmailVerificationService;
+use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,7 +36,8 @@ class AuthController extends AbstractController
         Request $request,
         UserPasswordHasherInterface $passwordHasher,
         EntityManagerInterface $entityManager,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        EmailVerificationService $verificationService
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -69,8 +72,10 @@ class AuthController extends AbstractController
         $entityManager->persist($user);
         $entityManager->flush();
 
+        $verificationService->sendVerificationEmail($user);
+
         return $this->json([
-            'message' => 'Account aangemaakt',
+            'message' => 'Account aangemaakt. Check je e-mail om je account te bevestigen.',
             'user' => [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
@@ -176,5 +181,94 @@ class AuthController extends AbstractController
         );
 
         return $response;
+    }
+
+    #[Route('/verify-email', name: 'api_verify_email', methods: ['POST'])]
+    public function verifyEmail(
+        Request $request,
+        EmailVerificationService $verificationService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $token = $data['token'] ?? null;
+
+        if (!$token) {
+            return $this->json(['error' => 'Token is verplicht'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $verificationService->verifyToken($token);
+
+        if (!$user) {
+            return $this->json([
+                'error' => 'Ongeldige of verlopen verificatielink'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['message' => 'E-mailadres succesvol geverifieerd']);
+    }
+
+    #[Route('/resend-verification', name: 'api_resend_verification', methods: ['POST'])]
+    public function resendVerification(
+        EmailVerificationService $verificationService
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        if ($user->isVerified()) {
+            return $this->json([
+                'error' => 'E-mailadres is al geverifieerd'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $verificationService->resendVerificationEmail($user);
+
+        return $this->json(['message' => 'Verificatie e-mail opnieuw verzonden']);
+    }
+
+    #[Route('/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
+    public function forgotPassword(
+        Request $request,
+        PasswordResetService $resetService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) {
+            return $this->json(['error' => 'E-mailadres is verplicht'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Always return success to prevent email enumeration
+        $resetService->sendResetEmail($email);
+
+        return $this->json([
+            'message' => 'Als dit e-mailadres bij ons bekend is, ontvang je een e-mail met instructies.'
+        ]);
+    }
+
+    #[Route('/reset-password', name: 'api_reset_password', methods: ['POST'])]
+    public function resetPassword(
+        Request $request,
+        PasswordResetService $resetService
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $token = $data['token'] ?? null;
+        $password = $data['password'] ?? null;
+
+        if (!$token || !$password) {
+            return $this->json(['error' => 'Token en wachtwoord zijn verplicht'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (strlen($password) < 8) {
+            return $this->json(['error' => 'Wachtwoord moet minimaal 8 karakters zijn'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $success = $resetService->resetPassword($token, $password);
+
+        if (!$success) {
+            return $this->json([
+                'error' => 'Ongeldige of verlopen reset link'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['message' => 'Wachtwoord succesvol gewijzigd']);
     }
 }

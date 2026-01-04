@@ -69,7 +69,12 @@ export default function LoginPage() {
             {isLoading ? 'Bezig...' : 'Inloggen'}
           </button>
         </form>
-        <p className="text-center mt-4 text-gray-600">
+        <p className="text-center mt-4">
+          <Link to="/forgot-password" className="text-primary-600 hover:underline text-sm">
+            Wachtwoord vergeten?
+          </Link>
+        </p>
+        <p className="text-center mt-2 text-gray-600">
           Nog geen account?{' '}
           <Link to="/register" className="text-primary-600 hover:underline">
             Registreer hier

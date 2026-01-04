@@ -36,6 +36,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private bool $isVerified = false;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $verificationToken = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $verificationExpiresAt = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $passwordResetToken = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $passwordResetExpiresAt = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -152,5 +164,75 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $this;
+    }
+
+    public function getVerificationToken(): ?string
+    {
+        return $this->verificationToken;
+    }
+
+    public function getVerificationExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->verificationExpiresAt;
+    }
+
+    public function generateVerificationToken(): void
+    {
+        $this->verificationToken = bin2hex(random_bytes(32));
+        $this->verificationExpiresAt = new \DateTimeImmutable('+24 hours');
+    }
+
+    public function clearVerificationToken(): void
+    {
+        $this->verificationToken = null;
+        $this->verificationExpiresAt = null;
+    }
+
+    public function isVerificationTokenValid(string $token): bool
+    {
+        if ($this->verificationToken !== $token) {
+            return false;
+        }
+
+        return $this->verificationExpiresAt !== null
+            && $this->verificationExpiresAt > new \DateTimeImmutable();
+    }
+
+    public function verify(): void
+    {
+        $this->isVerified = true;
+        $this->clearVerificationToken();
+    }
+
+    public function getPasswordResetToken(): ?string
+    {
+        return $this->passwordResetToken;
+    }
+
+    public function getPasswordResetExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->passwordResetExpiresAt;
+    }
+
+    public function generatePasswordResetToken(): void
+    {
+        $this->passwordResetToken = bin2hex(random_bytes(32));
+        $this->passwordResetExpiresAt = new \DateTimeImmutable('+1 hour');
+    }
+
+    public function clearPasswordResetToken(): void
+    {
+        $this->passwordResetToken = null;
+        $this->passwordResetExpiresAt = null;
+    }
+
+    public function isPasswordResetTokenValid(string $token): bool
+    {
+        if ($this->passwordResetToken !== $token) {
+            return false;
+        }
+
+        return $this->passwordResetExpiresAt !== null
+            && $this->passwordResetExpiresAt > new \DateTimeImmutable();
     }
 }
