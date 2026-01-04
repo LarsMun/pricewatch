@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 2.1
+**Versie:** 2.2
 **Datum:** Januari 2026
-**Status:** MVP+ Compleet (Fase 1-4)
+**Status:** MVP+ Compleet (Fase 1-8)
 
 ---
 
@@ -78,16 +78,23 @@ roles: array
 isVerified: bool
 verificationToken: ?string (64 chars, for email verification)
 verificationExpiresAt: ?DateTimeImmutable (24h token expiry)
+passwordResetToken: ?string (64 chars, for password reset)
+passwordResetExpiresAt: ?DateTimeImmutable (1h token expiry)
 createdAt: DateTimeImmutable
 
 // Relaties
 productWatches: OneToMany → ProductWatch
 
-// Methoden
+// Methoden - Email Verificatie
 generateVerificationToken()     // Genereert 64-char hex token + 24h expiry
 clearVerificationToken()        // Wist token na verificatie
 isVerificationTokenValid(token) // Controleert token + expiry
 verify()                        // Markeert als geverifieerd
+
+// Methoden - Password Reset
+generatePasswordResetToken()      // Genereert 64-char hex token + 1h expiry
+clearPasswordResetToken()         // Wist token na reset
+isPasswordResetTokenValid(token)  // Controleert token + expiry
 ```
 
 #### ProductWatch
@@ -174,6 +181,8 @@ sentAt: DateTimeImmutable
 | GET | `/api/me/export` | Gebruikersdata exporteren (GDPR) |
 | POST | `/api/verify-email` | Email verificatie met token |
 | POST | `/api/resend-verification` | Verstuur verificatie email opnieuw (JWT) |
+| POST | `/api/forgot-password` | Wachtwoord reset aanvragen (stuurt email) |
+| POST | `/api/reset-password` | Nieuw wachtwoord instellen met token |
 
 #### Watches (`ProductWatchController`)
 
@@ -275,6 +284,21 @@ resendVerificationEmail(User $user): bool  // Genereert nieuw token + stuurt ema
 - Onverifieerde gebruikers kunnen geen watches aanmaken
 - Email template met verificatie button
 
+#### PasswordResetService
+Wachtwoord reset functionaliteit.
+
+```php
+sendResetEmail(string $email): void              // Genereert token + stuurt email (silent bij onbekend email)
+validateToken(string $token): ?User              // Valideert token, retourneert user
+resetPassword(string $token, string $password): bool  // Reset wachtwoord, wist token
+```
+
+**Kenmerken:**
+- 64-karakter hex token (cryptografisch random)
+- 1 uur geldig (korter dan verificatie voor security)
+- Geeft altijd success response (voorkomt email enumeration)
+- Email template met reset button en expiry waarschuwing
+
 ---
 
 ### Scraper Engines
@@ -336,9 +360,11 @@ php bin/console app:check-prices --watch=123
 | Route | Component | Beschrijving |
 |-------|-----------|--------------|
 | `/` | HomePage | Landing page |
-| `/login` | LoginPage | Inloggen |
+| `/login` | LoginPage | Inloggen (met "Wachtwoord vergeten?" link) |
 | `/register` | RegisterPage | Registreren (met ToS checkbox) |
 | `/verify-email` | VerifyEmailPage | Email verificatie afhandeling |
+| `/forgot-password` | ForgotPasswordPage | Wachtwoord vergeten formulier |
+| `/reset-password` | ResetPasswordPage | Nieuw wachtwoord instellen (met token) |
 | `/dashboard` | DashboardPage | Overzicht watches |
 | `/add-watch` | AddWatchPage | Watch toevoegen |
 | `/watch/:id` | WatchDetailPage | Watch details + prijshistorie |
@@ -454,8 +480,11 @@ CREATE TABLE user (
     is_verified BOOLEAN DEFAULT FALSE,
     verification_token VARCHAR(64) DEFAULT NULL,
     verification_expires_at DATETIME DEFAULT NULL,
+    password_reset_token VARCHAR(64) DEFAULT NULL,
+    password_reset_expires_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL,
-    INDEX idx_verification_token (verification_token)
+    INDEX idx_verification_token (verification_token),
+    INDEX idx_password_reset_token (password_reset_token)
 );
 
 -- Product watches
@@ -518,6 +547,7 @@ CREATE TABLE notification (
 #### Authenticatie & Account
 - [x] Gebruikersregistratie en login (JWT)
 - [x] Email verificatie (24h token, blokkeer watches tot geverifieerd)
+- [x] Wachtwoord reset (1h token, email link)
 - [x] Terms of Service acceptatie bij registratie
 - [x] Account verwijderen (GDPR)
 - [x] Data export (GDPR)
@@ -554,7 +584,6 @@ CREATE TABLE notification (
 
 ### Toekomstige uitbreidingen
 
-- [ ] Wachtwoord reset
 - [ ] Notificatie voorkeuren (alleen dalingen)
 - [ ] Prijsdrempel alerts ("mail me als < €100")
 - [ ] Meerdere valuta's
@@ -601,6 +630,8 @@ Authorization: Bearer <jwt-token>
 - `POST /api/login`
 - `POST /api/register`
 - `POST /api/verify-email`
+- `POST /api/forgot-password`
+- `POST /api/reset-password`
 - `GET /api/bookmarklet.js`
 - `POST /api/watches/validate`
 

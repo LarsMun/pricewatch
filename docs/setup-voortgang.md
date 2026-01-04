@@ -2,9 +2,9 @@
 
 > Laatst bijgewerkt: 2026-01-04
 
-## Huidige Status: MVP+ Compleet (Fase 1-4)
+## Huidige Status: MVP+ Compleet (Fase 1-8)
 
-Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie, CRUD API, scraping, notificaties, bookmarklet, en compliance features.
+Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie en wachtwoord reset, CRUD API, scraping, notificaties, bookmarklet, en compliance features.
 
 ---
 
@@ -42,15 +42,19 @@ Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificati
 | `/api/me/export` | GET | JWT | Data exporteren (GDPR) |
 | `/api/verify-email` | POST | - | Verifieer email met token |
 | `/api/resend-verification` | POST | JWT | Verstuur verificatie email opnieuw |
+| `/api/forgot-password` | POST | - | Wachtwoord reset aanvragen |
+| `/api/reset-password` | POST | - | Nieuw wachtwoord instellen met token |
 
 #### Frontend Auth
 - [x] `AuthContext` - Token opslag (localStorage), user state, multi-tab sync
 - [x] `ProtectedRoute` - Redirect naar /login als niet ingelogd
-- [x] `LoginPage` - Werkende login met error handling
+- [x] `LoginPage` - Werkende login met error handling + "Wachtwoord vergeten?" link
 - [x] `RegisterPage` - Werkende registratie met validatie + ToS checkbox + verificatie melding
 - [x] `DashboardPage` - Watch overzicht met grid layout
 - [x] `VerifyEmailPage` - Verificatie link handling
 - [x] `VerificationBanner` - Waarschuwing voor niet-geverifieerde gebruikers
+- [x] `ForgotPasswordPage` - Email input met success state
+- [x] `ResetPasswordPage` - Nieuw wachtwoord instellen met token validatie
 
 ### Fase 2: Scraping Core (Compleet) ✅
 
@@ -134,12 +138,22 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
 - [x] Multi-tab authenticatie synchronisatie
 - [x] React Query cache clearing bij logout
 
+### Fase 8: Wachtwoord Reset ✅
+- [x] `PasswordResetService` - Token generatie, validatie, password reset
+- [x] `password_reset.html.twig` - Email template met reset button
+- [x] User entity uitgebreid met `passwordResetToken` en `passwordResetExpiresAt`
+- [x] Reset endpoints (`/api/forgot-password`, `/api/reset-password`)
+- [x] 1 uur token expiry (korter dan verificatie voor security)
+- [x] Security: altijd success response (voorkomt email enumeration)
+- [x] Frontend `ForgotPasswordPage` - email input met success state
+- [x] Frontend `ResetPasswordPage` - nieuw wachtwoord instellen met token
+- [x] "Wachtwoord vergeten?" link op LoginPage
+
 ---
 
 ## Wat Nog Moet Gebeuren
 
 ### Toekomstige Uitbreidingen
-- [ ] Wachtwoord reset flow
 - [ ] Unit & integration tests
 - [ ] API documentatie (Swagger/OpenAPI)
 - [ ] Productie deployment configuratie
@@ -206,6 +220,7 @@ shopq/
 │           ├── PriceCheckService.php
 │           ├── NotificationService.php
 │           ├── EmailVerificationService.php
+│           ├── PasswordResetService.php
 │           ├── UrlAnalyzerService.php
 │           ├── RobotsTxtChecker.php
 │           └── DomainRateLimiter.php
@@ -236,6 +251,8 @@ shopq/
 │       │   ├── WatchDetailPage.tsx
 │       │   ├── BookmarkletPage.tsx
 │       │   ├── VerifyEmailPage.tsx
+│       │   ├── ForgotPasswordPage.tsx
+│       │   ├── ResetPasswordPage.tsx
 │       │   ├── PrivacyPage.tsx
 │       │   ├── TermsPage.tsx
 │       │   └── ContactPage.tsx
@@ -376,8 +393,8 @@ De API URL wordt geconfigureerd via Vite proxy in `vite.config.ts`.
 **URL**: https://github.com/LarsMun/shopq
 
 ### Recente Commits
+- `564ed9f` - Add email verification and password reset features
 - `837a1bf` - Add legal compliance, GDPR features, and scraping safeguards
 - `45d9661` - Add URL analyzer wizard, bookmarklet, and image support
 - `7333320` - Update documentation with Phase 1 & 2 progress
 - `c180a03` - Add scraping core (Phase 2)
-- `4269ea8` - Add authentication API and frontend integration
