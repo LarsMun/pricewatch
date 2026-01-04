@@ -13,6 +13,7 @@ class UrlValidator
         '127.0.0.1',
         '0.0.0.0',
         '::1',
+        '[::1]', // IPv6 localhost with brackets (as returned by parse_url)
     ];
 
     /**

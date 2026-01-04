@@ -146,7 +146,8 @@ class RobotsTxtChecker
             } elseif ($currentAgent !== null) {
                 if ($directive === 'allow') {
                     $rules[$currentAgent]['allow'][] = $value;
-                } elseif ($directive === 'disallow') {
+                } elseif ($directive === 'disallow' && $value !== '') {
+                    // Empty Disallow: means "allow all" per robots.txt spec, so we skip it
                     $rules[$currentAgent]['disallow'][] = $value;
                 } elseif ($directive === 'crawl-delay') {
                     $rules[$currentAgent]['crawl-delay'] = $value;
@@ -193,7 +194,7 @@ class RobotsTxtChecker
         }
 
         if ($allowMatch === null && $disallowMatch !== null) {
-            return strlen($disallowMatch) > 0;
+            return false; // Blocked by disallow rule
         }
 
         return strlen($allowMatch) >= strlen($disallowMatch);

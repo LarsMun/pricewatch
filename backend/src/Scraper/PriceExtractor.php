@@ -197,7 +197,20 @@ class PriceExtractor
             $text = str_replace(',', '.', $text);
         } elseif ($dotCount === 1 && $commaCount === 0) {
             // Already US format: "19.99"
-        } elseif ($dotCount > 0 && $commaCount === 1) {
+        } elseif ($dotCount >= 1 && $commaCount >= 1) {
+            // Mixed separators - determine by position of last separator
+            $lastDotPos = strrpos($text, '.');
+            $lastCommaPos = strrpos($text, ',');
+
+            if ($lastCommaPos > $lastDotPos) {
+                // European with thousands: "1.299,00" -> comma is decimal
+                $text = str_replace('.', '', $text);
+                $text = str_replace(',', '.', $text);
+            } else {
+                // US with thousands: "1,299.00" -> dot is decimal
+                $text = str_replace(',', '', $text);
+            }
+        } elseif (false && $dotCount > 0 && $commaCount === 1) {
             // European with thousands: "1.299,00" -> "1299.00"
             $text = str_replace('.', '', $text);
             $text = str_replace(',', '.', $text);

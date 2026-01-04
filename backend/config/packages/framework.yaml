@@ -19,3 +19,7 @@ framework:
 
     serializer:
         enabled: true
+
+when@test:
+    framework:
+        test: true
