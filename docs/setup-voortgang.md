@@ -2,9 +2,9 @@
 
 > Laatst bijgewerkt: 2026-01-04
 
-## Huidige Status: MVP+ Compleet (Fase 1-8)
+## Huidige Status: MVP+ Compleet (Fase 1-9)
 
-Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie en wachtwoord reset, CRUD API, scraping, notificaties, bookmarklet, en compliance features.
+Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie en wachtwoord reset, CRUD API, scraping, notificaties, bookmarklet, compliance features, en pre-launch security fixes.
 
 ---
 
@@ -149,6 +149,18 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
 - [x] Frontend `ResetPasswordPage` - nieuw wachtwoord instellen met token
 - [x] "Wachtwoord vergeten?" link op LoginPage
 
+### Fase 9: Pre-Launch Security & Quality Fixes ✅
+- [x] SSRF Protection via `UrlValidator` service
+  - Blokkeert localhost, 127.0.0.1, private IP ranges (10.x, 172.16-31.x, 192.168.x)
+  - Blokkeert non-HTTP schemes (file://, ftp://, etc.)
+  - DNS rebinding bescherming (resolved IPs ook gecheckt)
+- [x] Rate limiting op `/api/watches/validate` endpoint (10/minuut per IP)
+- [x] User-level rate limiting op `/api/watches/check-all` (1x per 15 minuten)
+- [x] `lastErrorMessage` veld op ProductWatch voor debugging in UI
+- [x] Automatische engine fallback (HTTP → Browser bij 403/429)
+  - Retry met headless browser als HTTP geblokkeerd wordt
+  - Watch wordt automatisch omgezet naar browser engine bij succes
+
 ---
 
 ## Wat Nog Moet Gebeuren
@@ -222,6 +234,7 @@ shopq/
 │           ├── EmailVerificationService.php
 │           ├── PasswordResetService.php
 │           ├── UrlAnalyzerService.php
+│           ├── UrlValidator.php
 │           ├── RobotsTxtChecker.php
 │           └── DomainRateLimiter.php
 ├── frontend/

@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 2.2
+**Versie:** 2.3
 **Datum:** Januari 2026
-**Status:** MVP+ Compleet (Fase 1-8)
+**Status:** MVP+ Compleet (Fase 1-9)
 
 ---
 
@@ -126,6 +126,7 @@ checkMethod: enum('http', 'browser')
 // Status
 isActive: bool (default true)
 consecutiveFailures: int (default 0)
+lastErrorMessage: ?string (500 chars, last error for debugging)
 nextCheckAt: DateTimeImmutable
 lastCheckedAt: ?DateTimeImmutable
 lastSuccessfulCheckAt: ?DateTimeImmutable
@@ -191,7 +192,7 @@ sentAt: DateTimeImmutable
 | GET | `/api/watches` | Alle watches van gebruiker |
 | POST | `/api/watches` | Nieuwe watch aanmaken |
 | POST | `/api/watches/analyze` | URL analyseren voor auto-detectie |
-| POST | `/api/watches/check-all` | Alle watches direct checken |
+| POST | `/api/watches/check-all` | Alle watches direct checken (1x per 15min) |
 | GET | `/api/watches/{id}` | Watch details + prijshistorie |
 | PATCH | `/api/watches/{id}` | Watch updaten (naam, selector, active) |
 | DELETE | `/api/watches/{id}` | Watch verwijderen |
@@ -201,7 +202,7 @@ sentAt: DateTimeImmutable
 | Method | Endpoint | Beschrijving |
 |--------|----------|--------------|
 | GET | `/api/bookmarklet.js` | Bookmarklet JavaScript |
-| POST | `/api/watches/validate` | Selector valideren op URL |
+| POST | `/api/watches/validate` | Selector valideren op URL (10/min per IP) |
 
 ---
 
@@ -299,6 +300,25 @@ resetPassword(string $token, string $password): bool  // Reset wachtwoord, wist 
 - Geeft altijd success response (voorkomt email enumeration)
 - Email template met reset button en expiry waarschuwing
 
+#### UrlValidator
+SSRF (Server-Side Request Forgery) bescherming.
+
+```php
+validate(string $url): void  // throws InvalidArgumentException on unsafe URL
+```
+
+**Geblokkeerde URLs:**
+- Localhost varianten: `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`
+- Private IP ranges: `10.x.x.x`, `172.16-31.x.x`, `192.168.x.x`
+- Non-HTTP schemes: `file://`, `ftp://`, `gopher://`, etc.
+- DNS rebinding: resolved IPs worden ook gecheckt
+
+**Geïntegreerd in:**
+- `ProductWatchController::create()`
+- `ProductWatchController::analyze()`
+- `BookmarkletController::validate()`
+- `UrlAnalyzerService::analyze()`
+
 ---
 
 ### Scraper Engines
@@ -318,6 +338,12 @@ Headless Chrome scraping met JavaScript.
 - Headless Chrome
 - 2 seconden wachttijd voor JS rendering
 - Geschikt voor SPA's en dynamische content
+
+#### Automatische Engine Fallback
+Als HTTP engine een 403 (Forbidden) of 429 (Too Many Requests) retourneert:
+1. Automatisch retry met BrowserEngine
+2. Bij succes: watch wordt omgezet naar browser engine voor toekomstige checks
+3. Dit voorkomt handmatig switchen bij sites met bot-detectie
 
 #### PriceExtractor
 Prijsextractie uit HTML.
@@ -502,6 +528,7 @@ CREATE TABLE product_watch (
     original_price DECIMAL(10,2),
     check_method ENUM('http', 'browser') DEFAULT 'http',
     consecutive_failures INT DEFAULT 0,
+    last_error_message VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
     next_check_at DATETIME NOT NULL,
     last_checked_at DATETIME,
@@ -576,6 +603,11 @@ CREATE TABLE notification (
 - [x] Privacy Policy pagina
 - [x] Algemene Voorwaarden pagina
 - [x] Contact pagina
+
+#### Security
+- [x] SSRF bescherming (UrlValidator service)
+- [x] Rate limiting op validate endpoint (10/min per IP)
+- [x] User-level rate limiting op check-all (1x per 15 min)
 
 #### Frontend
 - [x] Responsieve UI (Tailwind CSS)

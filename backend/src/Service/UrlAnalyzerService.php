@@ -26,11 +26,15 @@ class UrlAnalyzerService
 {
     public function __construct(
         private HttpEngine $httpEngine,
+        private UrlValidator $urlValidator,
     ) {}
 
     public function analyze(string $url): UrlAnalysisResult
     {
         try {
+            // SSRF protection
+            $this->urlValidator->validate($url);
+
             // Fetch the page
             $result = $this->httpEngine->fetch($url);
             

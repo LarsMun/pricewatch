@@ -4,10 +4,12 @@ namespace App\Controller;
 
 use App\Scraper\HttpEngine;
 use App\Scraper\PriceExtractor;
+use App\Service\UrlValidator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api')]
@@ -16,11 +18,21 @@ class BookmarkletController extends AbstractController
     public function __construct(
         private HttpEngine $httpEngine,
         private PriceExtractor $priceExtractor,
+        private UrlValidator $urlValidator,
+        private RateLimiterFactory $validateEndpointLimiter,
     ) {}
 
     #[Route('/watches/validate', name: 'api_watches_validate', methods: ['POST'])]
     public function validate(Request $request): JsonResponse
     {
+        // Rate limit check per IP
+        $limiter = $this->validateEndpointLimiter->create($request->getClientIp() ?? 'unknown');
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json([
+                'error' => 'Te veel verzoeken. Wacht even voordat je het opnieuw probeert.'
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (!$data) {
@@ -40,6 +52,16 @@ class BookmarkletController extends AbstractController
             return $this->json([
                 'success' => false,
                 'error' => 'Ongeldige URL',
+            ]);
+        }
+
+        // SSRF protection
+        try {
+            $this->urlValidator->validate($url);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json([
+                'success' => false,
+                'error' => $e->getMessage(),
             ]);
         }
 

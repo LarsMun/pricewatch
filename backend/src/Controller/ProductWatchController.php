@@ -8,11 +8,13 @@ use App\Repository\ProductWatchRepository;
 use App\Repository\PriceCheckRepository;
 use App\Service\PriceCheckService;
 use App\Service\UrlAnalyzerService;
+use App\Service\UrlValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -25,6 +27,8 @@ class ProductWatchController extends AbstractController
         private ValidatorInterface $validator,
         private PriceCheckService $priceCheckService,
         private UrlAnalyzerService $urlAnalyzer,
+        private UrlValidator $urlValidator,
+        private RateLimiterFactory $checkAllUserLimiter,
     ) {}
 
     #[Route('', name: 'api_watches_list', methods: ['GET'])]
@@ -55,6 +59,13 @@ class ProductWatchController extends AbstractController
             return $this->json(['error' => 'Ongeldige URL'], Response::HTTP_BAD_REQUEST);
         }
 
+        // SSRF protection
+        try {
+            $this->urlValidator->validate($url);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
         $result = $this->urlAnalyzer->analyze($url);
 
         if (!$result->success) {
@@ -83,6 +94,15 @@ class ProductWatchController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
+
+        // Rate limit per user (1x per 15 minuten)
+        $limiter = $this->checkAllUserLimiter->create($user->getUserIdentifier());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json([
+                'error' => 'Je kunt alle watches maximaal eens per 15 minuten checken.'
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $watches = $this->watchRepository->findBy(['user' => $user, 'isActive' => true]);
 
         $results = ['total' => count($watches), 'success' => 0, 'failed' => 0, 'checks' => []];
@@ -120,6 +140,13 @@ class ProductWatchController extends AbstractController
 
         if (!$url || !$priceSelector) {
             return $this->json(['error' => 'url en priceSelector zijn verplicht'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // SSRF protection
+        try {
+            $this->urlValidator->validate($url);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
         /** @var User $user */
@@ -293,6 +320,7 @@ class ProductWatchController extends AbstractController
             'originalPrice' => $watch->getOriginalPrice(),
             'checkMethod' => $watch->getCheckMethod()->value,
             'consecutiveFailures' => $watch->getConsecutiveFailures(),
+            'lastErrorMessage' => $watch->getLastErrorMessage(),
             'isActive' => $watch->isActive(),
             'nextCheckAt' => $watch->getNextCheckAt()?->format('c'),
             'lastCheckedAt' => $watch->getLastCheckedAt()?->format('c'),

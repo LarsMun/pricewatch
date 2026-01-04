@@ -294,6 +294,9 @@ class ProductWatch
     #[ORM\Column(options: ['default' => 0])]
     private int $consecutiveFailures = 0;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $lastErrorMessage = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $nextCheckAt = null;
 
@@ -512,6 +515,17 @@ class ProductWatch
     public function hasReachedFailureThreshold(): bool
     {
         return $this->consecutiveFailures >= 5;
+    }
+
+    public function getLastErrorMessage(): ?string
+    {
+        return $this->lastErrorMessage;
+    }
+
+    public function setLastErrorMessage(?string $lastErrorMessage): static
+    {
+        $this->lastErrorMessage = $lastErrorMessage;
+        return $this;
     }
 
     public function getNextCheckAt(): ?\DateTimeImmutable

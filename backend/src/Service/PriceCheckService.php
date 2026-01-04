@@ -10,6 +10,7 @@ use App\Scraper\HttpEngine;
 use App\Scraper\ImageExtractor;
 use App\Scraper\PriceExtractor;
 use App\Scraper\ScrapeEngineInterface;
+use App\Scraper\ScrapeResult;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -39,6 +40,11 @@ class PriceCheckService
             default => $this->httpEngine,
         };
     }
+
+    /**
+     * HTTP status codes that trigger browser fallback.
+     */
+    private const FALLBACK_STATUS_CODES = [403, 429];
 
     /**
      * Check the price for a single ProductWatch.
@@ -74,6 +80,18 @@ class PriceCheckService
 
         $scrapeResult = $engine->fetch($url);
 
+        // Fallback: If HTTP engine fails with 403/429, try browser engine
+        if ($this->shouldFallbackToBrowser($watch, $scrapeResult)) {
+            $this->logger->info("HTTP returned {$scrapeResult->httpStatus}, falling back to browser for watch #{$watch->getId()}");
+            $scrapeResult = $this->browserEngine->fetch($url);
+
+            // If browser succeeds, update the watch to use browser by default
+            if ($scrapeResult->success) {
+                $this->logger->info("Browser fallback successful for watch #{$watch->getId()}, switching to browser engine");
+                $watch->setCheckMethod(CheckMethod::BROWSER);
+            }
+        }
+
         $priceCheck = new PriceCheck();
         $priceCheck->setProductWatch($watch);
         $priceCheck->setHttpStatus($scrapeResult->httpStatus);
@@ -105,11 +123,30 @@ class PriceCheckService
         return $priceCheck;
     }
 
+    /**
+     * Determine if we should fall back from HTTP to browser engine.
+     */
+    private function shouldFallbackToBrowser(ProductWatch $watch, ScrapeResult $result): bool
+    {
+        // Only fallback if currently using HTTP engine
+        if ($watch->getCheckMethod() !== CheckMethod::HTTP) {
+            return false;
+        }
+
+        // Fallback on specific HTTP status codes (403 Forbidden, 429 Too Many Requests)
+        if ($result->httpStatus !== null && in_array($result->httpStatus, self::FALLBACK_STATUS_CODES, true)) {
+            return true;
+        }
+
+        return false;
+    }
+
     private function handleFailure(ProductWatch $watch, PriceCheck $priceCheck, string $error): void
     {
         $priceCheck->setWasSuccessful(false);
         $priceCheck->setErrorMessage($error);
         $watch->incrementFailures();
+        $watch->setLastErrorMessage($error);
 
         $this->logger->warning("Check failed for watch #{$watch->getId()}: {$error}");
 
@@ -136,6 +173,7 @@ class PriceCheckService
         $oldPrice = $watch->getCurrentPrice();
 
         $watch->resetFailures();
+        $watch->setLastErrorMessage(null);
         $watch->setLastSuccessfulCheckAt(new \DateTimeImmutable());
         $watch->setLastSeenRawText($rawText);
 
@@ -200,6 +238,7 @@ class PriceCheckService
         // Don't increment failures for rate limiting - it's not a site problem
         // but do schedule next check further out
         $watch->setLastCheckedAt(new \DateTimeImmutable());
+        $watch->setLastErrorMessage($reason);
         $watch->scheduleNextCheck();
 
         $this->entityManager->persist($priceCheck);
