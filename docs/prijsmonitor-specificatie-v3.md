@@ -62,13 +62,13 @@ Een gebruiksvriendelijke tool waarbij de gebruiker:
 
 | Component | Technologie | Toelichting |
 |-----------|-------------|-------------|
-| Framework | Symfony 6.4+ | Bestaande expertise, volledige toolkit |
-| Database | PostgreSQL | Betrouwbaar, goede JSON-support |
-| Queue | Symfony Messenger | Async verwerking van scrape-jobs |
-| Scraping | Abstracted (zie onder) | ScrapeEngineInterface |
+| Framework | Symfony 7.2+ | PHP 8.3+, volledige toolkit |
+| Database | MariaDB 11.2 | Betrouwbaar, MySQL-compatibel |
+| Scraping | Dual Engine | HttpEngine + BrowserEngine (zie onder) |
 | Mail | Symfony Mailer | Notificaties |
+| Error Tracking | Sentry | Production monitoring |
 
-#### Scrape Engine Abstractie
+#### Scrape Engine Abstractie (Geïmplementeerd)
 
 ```php
 interface ScrapeEngineInterface
@@ -78,19 +78,19 @@ interface ScrapeEngineInterface
 
 class HttpEngine implements ScrapeEngineInterface
 {
-    // Guzzle/HttpClient - snel, lightweight
+    // Symfony HttpClient - snel, lightweight
     // Voor statische HTML sites
 }
 
 class BrowserEngine implements ScrapeEngineInterface
 {
-    // Symfony Panther of Playwright
+    // Symfony Panther + headless Chrome
     // Voor JavaScript-rendered sites
-    // Fallback wanneer HttpEngine faalt
+    // Automatische fallback bij 403/429 responses
 }
 ```
 
-**MVP**: Start met `HttpEngine`. Voeg `BrowserEngine` toe als fallback in latere iteratie.
+**Status:** Beide engines geïmplementeerd met automatische fallback.
 
 ### Frontend
 
@@ -424,57 +424,68 @@ Later (v2): "anchoring" - element vinden relatief aan bekende tekst (bijv. "€"
 
 ---
 
-## Beslissingen (MVP)
+## Beslissingen
 
-| Vraag | Beslissing |
-|-------|------------|
-| Limiet watches per user | **5 watches** (free tier) |
-| Retentie PriceChecks | **90 dagen** |
-| Unsubscribe | **Globale unsubscribe link** in elke mail |
-| Na site_broken | **Automatisch pauzeren** (`is_active = false`) |
-| Check frequentie | **2x per dag** (~12 uur interval + jitter) |
-| Scrape engine MVP | **HttpEngine** eerst, BrowserEngine later |
+| Vraag | Beslissing | Status |
+|-------|------------|--------|
+| Limiet watches per user | **Ongelimiteerd** (MVP) | ✅ |
+| Retentie PriceChecks | **90 dagen** | ✅ |
+| Unsubscribe | **Globale unsubscribe link** in elke mail | ✅ |
+| Na site_broken | **Automatisch pauzeren** (`is_active = false`) | ✅ |
+| Check frequentie | **~12 uur interval + jitter** per watch | ✅ |
+| Scheduler interval | **5 minuten**, 50 watches per run | ✅ |
+| Scrape engines | **Dual engine** met auto-fallback | ✅ |
+| Notificaties | **Email + Discord/Slack webhooks** | ✅ |
 
 ---
 
-## Bouwvolgorde
+## Bouwvolgorde (Voltooid)
 
-### Fase 1: Foundation
-- [ ] Symfony project setup
-- [ ] Doctrine entities + migrations
-- [ ] User authenticatie (registration, login, JWT)
-- [ ] Basic CRUD voor ProductWatch
+### Fase 1: Foundation ✅
+- [x] Symfony project setup
+- [x] Doctrine entities + migrations
+- [x] User authenticatie (registration, login, JWT)
+- [x] Basic CRUD voor ProductWatch
 
-### Fase 2: Scraping Core
-- [ ] ScrapeEngineInterface + HttpEngine implementatie
-- [ ] PriceExtractor service (selector → price)
-- [ ] Worker command: process watches waar `next_check_at <= now()`
-- [ ] PriceCheck logging
-- [ ] Rate limiting per domain
+### Fase 2: Scraping Core ✅
+- [x] ScrapeEngineInterface + HttpEngine implementatie
+- [x] PriceExtractor service (selector → price)
+- [x] Worker command: process watches waar `next_check_at <= now()`
+- [x] PriceCheck logging
+- [x] Rate limiting per domain
 
-### Fase 3: Notificaties
-- [ ] NotificationService
-- [ ] Email templates (price_decrease, price_increase, site_broken)
-- [ ] Debounce logic
-- [ ] Unsubscribe handling
+### Fase 3: Notificaties ✅
+- [x] NotificationService
+- [x] Email templates (price_decrease, price_increase, site_broken)
+- [x] Debounce logic
+- [x] Discord/Slack webhook integratie
 
-### Fase 4: Frontend Basics
-- [ ] React project setup
-- [ ] Login/register pages
-- [ ] Watch list view
-- [ ] Watch detail + prijshistorie grafiek
+### Fase 4: Frontend ✅
+- [x] React project setup (Vite + TypeScript)
+- [x] Login/register pages met email verificatie
+- [x] Watch list view
+- [x] Watch detail + prijshistorie
 
-### Fase 5: Bookmarklet
-- [ ] Bookmarklet JavaScript
-- [ ] Selector generatie logic
-- [ ] `/api/watches/validate` endpoint
-- [ ] Confirmation flow in React
+### Fase 5: Bookmarklet ✅
+- [x] Bookmarklet JavaScript
+- [x] Selector generatie logic
+- [x] `/api/watches/validate` endpoint
+- [x] URL analyzer wizard
 
-### Fase 6: Polish & Fallback
-- [ ] BrowserEngine (Panther/Playwright) voor JS sites
-- [ ] Auto-detect wanneer browser nodig is
-- [ ] Error handling improvements
-- [ ] Rate limit dashboard
+### Fase 6: Browser Engine ✅
+- [x] BrowserEngine (Symfony Panther + headless Chrome)
+- [x] Auto-fallback bij 403/429 responses
+- [x] Automatische engine switch bij succes
+
+### Fase 7-10: Production Ready ✅
+- [x] Email verificatie + password reset
+- [x] SSRF bescherming (UrlValidator)
+- [x] Unit & integration tests (127 tests)
+- [x] CI/CD (GitHub Actions)
+- [x] Docker production setup
+- [x] Sentry error tracking
+- [x] Admin dashboard
+- [x] PWA support
 
 ---
 
@@ -490,6 +501,6 @@ Later (v2): "anchoring" - element vinden relatief aan bekende tekst (bijv. "€"
 
 ---
 
-*Document versie: 0.3*
-*Laatst bijgewerkt: 2024-12-31*
-*Auteur: Lars + Claude*
+*Document versie: 1.0 (Production Ready)*
+*Laatst bijgewerkt: 2026-01-05*
+*Auteur: Lars*

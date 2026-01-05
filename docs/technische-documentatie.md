@@ -708,12 +708,32 @@ MAILER_DSN=smtp://mailhog:1025
 VITE_API_URL=http://localhost:8100
 ```
 
-### Cron Setup (productie)
+### Scheduler Setup (productie)
 
+**Recommended:** Docker scheduler container (zie docker-compose.prod.yml)
 ```bash
-# Elke 15 minuten prijzen checken
-*/15 * * * * cd /var/www/html && php bin/console app:check-prices --limit=50
+# Elke 5 minuten, 50 watches per run
+while true; do
+  php bin/console app:check-prices --limit=50
+  sleep 300
+done
 ```
+
+**Alternatief:** Cron (indien geen Docker)
+```bash
+# Elke 5 minuten
+*/5 * * * * cd /var/www/html && php bin/console app:check-prices --limit=50
+
+# Of minder frequent (minder server load)
+*/15 * * * * cd /var/www/html && php bin/console app:check-prices --limit=100
+```
+
+**Scaling opties:**
+| Interval | Limit | Watches/uur | Use case |
+|----------|-------|-------------|----------|
+| 5 min | 50 | 600 | Default, actieve monitoring |
+| 3 min | 100 | 2000 | High volume |
+| 15 min | 50 | 200 | Low resources |
 
 ---
 
