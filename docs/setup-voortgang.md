@@ -2,13 +2,31 @@
 
 > Laatst bijgewerkt: 2026-01-05
 
-## Huidige Status: Production Ready (Fase 1-10)
+## Huidige Status: LIVE IN PRODUCTIE 🚀
 
-Alle kernfunctionaliteit is geïmplementeerd inclusief productie-klare deployment configuratie, CI/CD, error tracking, PWA support, webhook notificaties, en admin dashboard.
+ShopQ is volledig live en operationeel op productie-servers.
 
 ---
 
-## Draaiende Services
+## Live Omgeving
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Frontend | https://shopq.app | ✅ Live |
+| API | https://api.shopq.app | ✅ Live |
+| API Docs | https://api.shopq.app/api/doc | ✅ Live |
+| Health Check | https://api.shopq.app/api/health | ✅ Live |
+
+### VPS Specificaties
+- **Provider**: Transip BladeVPS X1
+- **IP**: 149.210.215.153
+- **OS**: Ubuntu/Debian
+- **RAM**: ~850 MB + 2GB swap
+- **SSL**: Let's Encrypt (auto-renew via Traefik)
+
+---
+
+## Development Services (Lokaal)
 
 | Service | Container | Poort | URL |
 |---------|-----------|-------|-----|
@@ -232,6 +250,36 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
   - Gebruikers: Tabel met verificatie status, watch count, admin toggle
   - Recente Checks: Live feed van prijschecks
 - [x] Admin link in dashboard header (alleen voor admins)
+
+### Fase 11: Productie Deployment ✅
+
+#### VPS Setup (Transip BladeVPS X1)
+- [x] Docker & Docker Compose geïnstalleerd
+- [x] 2GB swap toegevoegd (voor lage RAM VPS)
+- [x] SSH key-based authentication
+
+#### Traefik Reverse Proxy
+- [x] Traefik v3.x als reverse proxy
+- [x] Automatische SSL via Let's Encrypt (ACME HTTP challenge)
+- [x] HTTP → HTTPS redirect
+- [x] www → non-www redirect
+
+#### Container Deployment
+- [x] Frontend (nginx) op shopq.app
+- [x] API (PHP/Apache) op api.shopq.app
+- [x] MariaDB 11.2 database
+- [x] Scheduler service (prijscheck elke 5 min)
+- [x] Health checks op alle services
+
+#### DNS Configuratie
+- [x] A-records voor shopq.app en api.shopq.app
+- [x] Geen AAAA records (IPv6 veroorzaakt Let's Encrypt issues)
+
+#### Fixes tijdens deployment
+- [x] Symfony .env file creatie in Dockerfile (PathException fix)
+- [x] Doctrine cache pools configuratie
+- [x] Environment variables doorgeven aan containers
+- [x] IPv4-only healthchecks (Alpine wget IPv6 issue)
 
 ---
 
