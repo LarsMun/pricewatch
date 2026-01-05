@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 2.3
-**Datum:** Januari 2026
-**Status:** MVP+ Compleet (Fase 1-9)
+**Versie:** 3.0
+**Datum:** 5 Januari 2026
+**Status:** Production Ready (Fase 1-10)
 
 ---
 
@@ -74,12 +74,14 @@ Gebruikersaccounts met JWT authenticatie.
 id: int (PK)
 email: string (unique, 180 chars)
 password: string (bcrypt hash)
-roles: array
+roles: array (ROLE_USER, ROLE_ADMIN)
 isVerified: bool
 verificationToken: ?string (64 chars, for email verification)
 verificationExpiresAt: ?DateTimeImmutable (24h token expiry)
 passwordResetToken: ?string (64 chars, for password reset)
 passwordResetExpiresAt: ?DateTimeImmutable (1h token expiry)
+discordWebhookUrl: ?string (500 chars, Discord webhook URL)
+slackWebhookUrl: ?string (500 chars, Slack webhook URL)
 createdAt: DateTimeImmutable
 
 // Relaties
@@ -95,6 +97,11 @@ verify()                        // Markeert als geverifieerd
 generatePasswordResetToken()      // Genereert 64-char hex token + 1h expiry
 clearPasswordResetToken()         // Wist token na reset
 isPasswordResetTokenValid(token)  // Controleert token + expiry
+
+// Methoden - Webhooks
+hasWebhooksConfigured()           // True als Discord of Slack URL is ingesteld
+getDiscordWebhookUrl()            // Discord webhook URL
+getSlackWebhookUrl()              // Slack webhook URL
 ```
 
 #### ProductWatch
@@ -184,6 +191,7 @@ sentAt: DateTimeImmutable
 | POST | `/api/resend-verification` | Verstuur verificatie email opnieuw (JWT) |
 | POST | `/api/forgot-password` | Wachtwoord reset aanvragen (stuurt email) |
 | POST | `/api/reset-password` | Nieuw wachtwoord instellen met token |
+| PATCH | `/api/me/settings` | Webhook instellingen bijwerken (discordWebhookUrl, slackWebhookUrl) |
 
 #### Watches (`ProductWatchController`)
 
@@ -203,6 +211,22 @@ sentAt: DateTimeImmutable
 |--------|----------|--------------|
 | GET | `/api/bookmarklet.js` | Bookmarklet JavaScript |
 | POST | `/api/watches/validate` | Selector valideren op URL (10/min per IP) |
+
+#### Admin (`AdminController`) - Vereist ROLE_ADMIN
+
+| Method | Endpoint | Beschrijving |
+|--------|----------|--------------|
+| GET | `/api/admin/stats` | Dashboard statistieken (gebruikers, watches, checks, notificaties) |
+| GET | `/api/admin/users` | Gebruikerslijst met paginatie en filters |
+| GET | `/api/admin/users/{id}` | Gebruiker details met watches |
+| PATCH | `/api/admin/users/{id}/role` | Admin rol toekennen/intrekken (action: grant_admin/revoke_admin) |
+| GET | `/api/admin/recent-checks` | Recente prijschecks (laatste 24u) |
+
+#### Health (`HealthController`)
+
+| Method | Endpoint | Beschrijving |
+|--------|----------|--------------|
+| GET | `/api/health` | Health check (database + timestamp) |
 
 ---
 
@@ -224,13 +248,34 @@ check(ProductWatch $watch): PriceCheck
 6. Plan volgende check
 
 #### NotificationService
-E-mail notificaties versturen.
+E-mail en webhook notificaties versturen.
 
 ```php
 notifyPriceDecrease(watch, oldPrice, newPrice): Notification
 notifyPriceIncrease(watch, oldPrice, newPrice): Notification
 notifySiteBroken(watch): Notification
 ```
+
+**Integreert met:**
+- Mailer voor email notificaties
+- WebhookService voor Discord/Slack notificaties
+
+#### WebhookService
+Discord en Slack webhook notificaties.
+
+```php
+sendNotification(User $user, ProductWatch $watch, Notification $notification): void
+```
+
+**Discord:**
+- Rich embeds met kleurcodering (groen/rood/grijs)
+- Product naam, prijs oud → nieuw, percentage
+- Link naar productpagina
+
+**Slack:**
+- Block Kit formatting
+- Emoji indicatoren (📉/📈/⚠️)
+- Dezelfde content als Discord
 
 #### UrlAnalyzerService
 Automatische URL analyse voor watch creatie.
@@ -395,6 +440,8 @@ php bin/console app:check-prices --watch=123
 | `/add-watch` | AddWatchPage | Watch toevoegen |
 | `/watch/:id` | WatchDetailPage | Watch details + prijshistorie |
 | `/bookmarklet` | BookmarkletPage | Bookmarklet instructies |
+| `/settings` | SettingsPage | Webhook instellingen (Discord/Slack) |
+| `/admin` | AdminPage | Admin dashboard (ROLE_ADMIN vereist) |
 | `/privacy` | PrivacyPage | Privacybeleid (GDPR) |
 | `/terms` | TermsPage | Algemene voorwaarden |
 | `/contact` | ContactPage | Contactgegevens |
@@ -508,6 +555,8 @@ CREATE TABLE user (
     verification_expires_at DATETIME DEFAULT NULL,
     password_reset_token VARCHAR(64) DEFAULT NULL,
     password_reset_expires_at DATETIME DEFAULT NULL,
+    discord_webhook_url VARCHAR(500) DEFAULT NULL,
+    slack_webhook_url VARCHAR(500) DEFAULT NULL,
     created_at DATETIME NOT NULL,
     INDEX idx_verification_token (verification_token),
     INDEX idx_password_reset_token (password_reset_token)
@@ -614,6 +663,26 @@ CREATE TABLE notification (
 - [x] Footer met juridische links
 - [x] Affiliate disclaimer ("Bekijk op [domein]")
 
+#### Webhook Notificaties
+- [x] Discord webhooks met rich embeds
+- [x] Slack webhooks met Block Kit formatting
+- [x] Configureerbaar per gebruiker via Instellingen pagina
+
+#### Admin Dashboard
+- [x] Statistieken overzicht (gebruikers, watches, checks)
+- [x] Gebruikersbeheer met rol toekenning
+- [x] Recente checks feed (laatste 24u)
+- [x] Top domeinen analyse
+- [x] Success rate monitoring
+
+#### Production Features
+- [x] Health check endpoint
+- [x] Sentry error tracking (backend + frontend)
+- [x] API documentatie (NelmioApiDocBundle/Swagger)
+- [x] PWA support met offline caching
+- [x] GitHub Actions CI/CD
+- [x] Docker production configuratie
+
 ### Toekomstige uitbreidingen
 
 - [ ] Notificatie voorkeuren (alleen dalingen)
@@ -621,8 +690,6 @@ CREATE TABLE notification (
 - [ ] Meerdere valuta's
 - [ ] Browser extensie
 - [ ] Prijsgrafiek visualisatie
-- [ ] Test suite (unit + integration)
-- [ ] API documentatie (Swagger/OpenAPI)
 
 ---
 
@@ -754,4 +821,62 @@ docker exec pricewatch-frontend npm run build
 
 ---
 
-*Laatst bijgewerkt: 4 Januari 2026*
+## Productie Deployment
+
+### Vereisten
+- Docker + Docker Compose
+- Traefik reverse proxy (of andere)
+- SSL certificaat (Let's Encrypt)
+- SMTP server voor emails
+
+### Environment Variables (Productie)
+
+```bash
+# Backend
+APP_ENV=prod
+APP_SECRET=<random-64-chars>
+DATABASE_URL=mysql://user:pass@db:3306/shopq
+JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+JWT_PASSPHRASE=<jwt-passphrase>
+MAILER_DSN=smtp://mail.example.com:587
+CORS_ALLOW_ORIGIN=https://shopq.example.com
+SENTRY_DSN=<sentry-dsn-backend>
+
+# Frontend (build-time)
+VITE_API_URL=https://api.shopq.example.com
+VITE_SENTRY_DSN=<sentry-dsn-frontend>
+```
+
+### Deployment Script
+
+```bash
+./deploy.sh  # Pull, build, migrate, restart
+```
+
+### Docker Services (Productie)
+
+| Service | Beschrijving |
+|---------|--------------|
+| api | PHP-FPM + Nginx backend |
+| frontend | Nginx met static React build |
+| db | MariaDB database |
+| scheduler | Cron container voor prijschecks |
+
+### Health Check
+
+```bash
+curl https://api.shopq.example.com/api/health
+# {"status":"ok","database":"connected","timestamp":"2026-01-05T12:00:00+00:00"}
+```
+
+### CI/CD (GitHub Actions)
+
+De pipeline draait bij elke push/PR naar main:
+1. Backend tests (PHPUnit)
+2. Frontend build
+3. (Optioneel) Deploy naar productie
+
+---
+
+*Laatst bijgewerkt: 5 Januari 2026*

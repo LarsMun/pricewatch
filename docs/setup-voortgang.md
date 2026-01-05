@@ -1,10 +1,10 @@
 # ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-04
+> Laatst bijgewerkt: 2026-01-05
 
-## Huidige Status: MVP+ Compleet (Fase 1-9)
+## Huidige Status: Production Ready (Fase 1-10)
 
-Alle kernfunctionaliteit is geïmplementeerd: authenticatie met email verificatie en wachtwoord reset, CRUD API, scraping, notificaties, bookmarklet, compliance features, en pre-launch security fixes.
+Alle kernfunctionaliteit is geïmplementeerd inclusief productie-klare deployment configuratie, CI/CD, error tracking, PWA support, webhook notificaties, en admin dashboard.
 
 ---
 
@@ -161,15 +161,88 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
   - Retry met headless browser als HTTP geblokkeerd wordt
   - Watch wordt automatisch omgezet naar browser engine bij succes
 
+### Fase 10: Production Readiness ✅
+
+#### CI/CD & Testing
+- [x] GitHub Actions workflow (`.github/workflows/ci.yml`)
+  - Backend: PHPUnit tests met PHP 8.3
+  - Frontend: npm build + lint met Node 20
+  - Automatisch bij push/PR naar main
+- [x] 127 unit & integration tests (backend)
+  - UrlValidatorTest, PriceExtractorTest, ProductWatchTest
+  - UserTest, RobotsTxtCheckerTest, AuthControllerTest
+  - Mocks voor externe services
+
+#### Docker Production Configuration
+- [x] Multi-stage Dockerfiles voor productie
+  - `docker/php/Dockerfile.prod` - OPcache, Chromium, optimized
+  - `docker/nginx/Dockerfile.prod` - gzip, caching, SPA routing
+- [x] `docker-compose.prod.yml` met Traefik labels
+  - Automatische SSL via Let's Encrypt
+  - Health checks op alle services
+- [x] Scheduler service voor automatische prijschecks (elke 5 min)
+
+#### Deployment
+- [x] `deploy.sh` - One-command deployment script
+- [x] `docs/deployment.md` - Uitgebreide deployment handleiding
+- [x] `.env.prod.example` - Productie environment template
+
+#### Error Tracking (Sentry)
+- [x] Backend: `sentry-symfony` bundle integratie
+- [x] Frontend: `@sentry/react` met ErrorBoundary
+- [x] PII filtering (geen IP-adressen)
+- [x] Configureerbaar via `SENTRY_DSN` env vars
+
+#### Frontend Optimizations
+- [x] Code splitting (vendor-react, vendor-query, vendor-sentry)
+- [x] Terser minification (console/debugger removal)
+- [x] Source maps voor debugging
+- [x] Chunk size warnings
+
+#### PWA Support
+- [x] `vite-plugin-pwa` integratie
+- [x] Web app manifest (naam, iconen, theme)
+- [x] Workbox service worker
+- [x] API response caching (NetworkFirst)
+- [x] Auto-update registratie
+
+#### API Documentation
+- [x] NelmioApiDocBundle (OpenAPI/Swagger)
+- [x] Beschikbaar op `/api/doc`
+- [x] JWT Bearer auth geconfigureerd
+
+#### Webhook Notifications
+- [x] `WebhookService` voor Discord en Slack
+- [x] Discord: Rich embeds met kleuren en thumbnails
+- [x] Slack: Block Kit met buttons
+- [x] User webhook configuratie via `/api/me/settings`
+- [x] `SettingsPage` frontend voor webhook URLs
+- [x] Database migratie voor webhook velden
+
+#### Admin Dashboard
+- [x] `AdminController` met statistieken endpoints
+  - `GET /api/admin/stats` - Gebruikers, watches, checks stats
+  - `GET /api/admin/users` - Gepagineerde gebruikerslijst
+  - `GET /api/admin/users/{id}` - Gebruiker detail + watches
+  - `PATCH /api/admin/users/{id}/role` - Admin rol toekennen/intrekken
+  - `GET /api/admin/recent-checks` - Recente prijschecks
+- [x] `ROLE_ADMIN` access control in security.yaml
+- [x] `AdminPage` frontend met 3 tabs:
+  - Overzicht: Stats cards, success rate, top domeinen
+  - Gebruikers: Tabel met verificatie status, watch count, admin toggle
+  - Recente Checks: Live feed van prijschecks
+- [x] Admin link in dashboard header (alleen voor admins)
+
 ---
 
 ## Wat Nog Moet Gebeuren
 
 ### Toekomstige Uitbreidingen
-- [ ] Unit & integration tests
-- [ ] API documentatie (Swagger/OpenAPI)
-- [ ] Productie deployment configuratie
-- [ ] Cron job setup documentatie
+- [ ] Push notificaties (web push)
+- [ ] Prijsdrempel alerts ("mail me als < €100")
+- [ ] Meerdere valuta's ondersteuning
+- [ ] Browser extensie
+- [ ] Prijsgrafiek visualisatie
 
 ---
 
@@ -177,30 +250,38 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
 
 ```
 shopq/
-├── docker-compose.yml
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions CI/CD
+├── docker-compose.yml              # Development
+├── docker-compose.prod.yml         # Production
+├── deploy.sh                       # Deployment script
+├── .env.prod.example               # Production env template
 ├── docker/
 │   ├── php/
-│   │   ├── Dockerfile
+│   │   ├── Dockerfile              # Development
+│   │   ├── Dockerfile.prod         # Production (multi-stage)
 │   │   └── php.ini
 │   └── nginx/
-│       └── Dockerfile.frontend
+│       ├── Dockerfile.frontend     # Development
+│       ├── Dockerfile.prod         # Production
+│       └── nginx.prod.conf
 ├── backend/
 │   ├── bin/console
 │   ├── composer.json
 │   ├── config/
 │   │   ├── packages/
 │   │   │   ├── doctrine.yaml
-│   │   │   ├── security.yaml
+│   │   │   ├── security.yaml       # ROLE_ADMIN config
 │   │   │   ├── lexik_jwt_authentication.yaml
 │   │   │   ├── rate_limiter.yaml
-│   │   │   └── ...
+│   │   │   ├── sentry.yaml         # Error tracking
+│   │   │   └── nelmio_api_doc.yaml # API docs
 │   │   └── jwt/
-│   │       ├── private.pem
-│   │       └── public.pem
 │   ├── migrations/
-│   ├── public/
-│   │   ├── index.php
-│   │   └── .htaccess
+│   ├── tests/                      # PHPUnit tests
+│   │   ├── Unit/
+│   │   └── Integration/
 │   └── src/
 │       ├── Command/
 │       │   ├── CheckPricesCommand.php
@@ -208,20 +289,16 @@ shopq/
 │       ├── Controller/
 │       │   ├── AuthController.php
 │       │   ├── ProductWatchController.php
-│       │   └── BookmarkletController.php
+│       │   ├── BookmarkletController.php
+│       │   ├── AdminController.php   # Admin dashboard API
+│       │   └── HealthController.php  # Health check endpoint
 │       ├── Entity/
-│       │   ├── User.php
+│       │   ├── User.php              # +webhook fields
 │       │   ├── ProductWatch.php
 │       │   ├── PriceCheck.php
 │       │   └── Notification.php
 │       ├── Enum/
-│       │   ├── CheckMethod.php
-│       │   └── NotificationType.php
 │       ├── Repository/
-│       │   ├── UserRepository.php
-│       │   ├── ProductWatchRepository.php
-│       │   ├── PriceCheckRepository.php
-│       │   └── NotificationRepository.php
 │       ├── Scraper/
 │       │   ├── ScrapeEngineInterface.php
 │       │   ├── HttpEngine.php
@@ -231,6 +308,7 @@ shopq/
 │       └── Service/
 │           ├── PriceCheckService.php
 │           ├── NotificationService.php
+│           ├── WebhookService.php    # Discord/Slack webhooks
 │           ├── EmailVerificationService.php
 │           ├── PasswordResetService.php
 │           ├── UrlAnalyzerService.php
@@ -239,9 +317,9 @@ shopq/
 │           └── DomainRateLimiter.php
 ├── frontend/
 │   ├── package.json
-│   ├── vite.config.ts
+│   ├── vite.config.ts              # PWA + code splitting
 │   └── src/
-│       ├── main.tsx
+│       ├── main.tsx                # Sentry integration
 │       ├── App.tsx
 │       ├── api/
 │       │   └── client.ts
@@ -266,6 +344,8 @@ shopq/
 │       │   ├── VerifyEmailPage.tsx
 │       │   ├── ForgotPasswordPage.tsx
 │       │   ├── ResetPasswordPage.tsx
+│       │   ├── SettingsPage.tsx      # Webhook configuratie
+│       │   ├── AdminPage.tsx         # Admin dashboard
 │       │   ├── PrivacyPage.tsx
 │       │   ├── TermsPage.tsx
 │       │   └── ContactPage.tsx
@@ -273,6 +353,7 @@ shopq/
 │           └── index.ts
 └── docs/
     ├── technische-documentatie.md
+    ├── deployment.md               # Deployment handleiding
     ├── prijsmonitor-specificatie-v3.md
     ├── prijswacht-entities.md
     ├── setup-voortgang.md
