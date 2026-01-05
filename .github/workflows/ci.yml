@@ -43,6 +43,8 @@ jobs:
           echo "APP_SECRET=ci-test-secret-not-for-production" >> .env
           echo "DATABASE_URL=sqlite:///%kernel.project_dir%/var/test.db" >> .env
           echo "DEFAULT_URI=http://localhost:8100" >> .env
+          echo "CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'" >> .env
+          echo "MAILER_DSN=null://null" >> .env
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
