@@ -28,6 +28,14 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <div className="flex items-center gap-4">
             <span className="text-gray-600">{user?.email}</span>
+            {user?.roles?.includes('ROLE_ADMIN') && (
+              <Link
+                to="/admin"
+                className="px-4 py-2 text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition"
+              >
+                Admin
+              </Link>
+            )}
             <Link
               to="/settings"
               className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition"

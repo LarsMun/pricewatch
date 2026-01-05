@@ -2,9 +2,70 @@ export interface User {
   id: number
   email: string
   isVerified: boolean
+  roles: string[]
   createdAt: string
   discordWebhookUrl: string | null
   slackWebhookUrl: string | null
+}
+
+export interface AdminStats {
+  users: {
+    total: number
+    verified: number
+    unverified: number
+    newLast7Days: number
+  }
+  watches: {
+    total: number
+    active: number
+    paused: number
+  }
+  priceChecks: {
+    last24h: number
+    successful: number
+    failed: number
+    successRate: number
+  }
+  notifications: {
+    last7Days: number
+  }
+  topDomains: Array<{ domain: string; count: number }>
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  isVerified: boolean
+  roles: string[]
+  createdAt: string
+  watchCount: number
+}
+
+export interface AdminUserDetail extends AdminUser {
+  watches: Array<{
+    id: number
+    url: string
+    domain: string
+    productName: string | null
+    currentPrice: string | null
+    isActive: boolean
+    consecutiveFailures: number
+    lastCheckedAt: string | null
+    createdAt: string
+  }>
+}
+
+export interface RecentCheck {
+  id: number
+  price: string | null
+  wasSuccessful: boolean
+  httpStatus: number | null
+  durationMs: number | null
+  errorMessage: string | null
+  checkedAt: string
+  domain: string
+  productName: string | null
+  userEmail: string
 }
 
 export interface ProductWatch {

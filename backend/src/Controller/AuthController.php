@@ -93,6 +93,7 @@ class AuthController extends AbstractController
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'isVerified' => $user->isVerified(),
+            'roles' => $user->getRoles(),
             'createdAt' => $user->getCreatedAt()->format('c'),
             'discordWebhookUrl' => $user->getDiscordWebhookUrl(),
             'slackWebhookUrl' => $user->getSlackWebhookUrl(),
