@@ -65,19 +65,22 @@ jobs:
           # Clear all caches
           rm -rf var/cache/*
           php bin/console cache:clear --env=test
-          # Show what Doctrine knows about the User entity
-          echo "=== Doctrine schema validation ==="
-          php bin/console doctrine:schema:validate --env=test || true
-          echo "=== Entity mapping info ==="
-          php bin/console doctrine:mapping:info --env=test
+          # Show database URL being used
+          echo "=== Debug: DATABASE_URL ==="
+          php bin/console debug:config doctrine dbal.url --env=test || echo "debug:config failed"
           # Create fresh database with schema update
           rm -f var/test.db
-          rm -rf var/cache/test/doctrine
-          touch var/test.db
-          php bin/console doctrine:schema:update --force --env=test --dump-sql --complete
+          php bin/console doctrine:schema:update --force --env=test --dump-sql
           # Debug: verify schema
           echo "=== All columns in user table ==="
           sqlite3 var/test.db "PRAGMA table_info(user);"
+          echo "=== Check integration test can access database ==="
+          php -r "
+            require 'vendor/autoload.php';
+            use Symfony\Component\Dotenv\Dotenv;
+            (new Dotenv())->bootEnv('.env');
+            echo 'DATABASE_URL from env: ' . (\$_ENV['DATABASE_URL'] ?? 'NOT SET') . PHP_EOL;
+          "
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --testdox -vvv
