@@ -32,8 +32,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_PASSPHRASE: ${JWT_PASSPHRASE}
-      FRONTEND_URL: ${FRONTEND_URL:-https://prijswacht.nl}
-      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https://prijswacht\.nl$}
+      FRONTEND_URL: ${FRONTEND_URL:-https://shopq.app}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https://shopq\.app$}
     depends_on:
       db:
         condition: service_healthy
@@ -42,7 +42,7 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.prijswacht.nl`)"
+      - "traefik.http.routers.api.rule=Host(`api.shopq.app`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
       - "traefik.http.services.api.loadbalancer.server.port=80"
@@ -53,13 +53,13 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile.prod
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://api.prijswacht.nl}
+        VITE_API_URL: ${VITE_API_URL:-https://api.shopq.app}
     restart: always
     networks:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`prijswacht.nl`) || Host(`www.prijswacht.nl`)"
+      - "traefik.http.routers.frontend.rule=Host(`shopq.app`) || Host(`www.shopq.app`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
