@@ -74,7 +74,7 @@ jobs:
           sqlite3 var/test.db "PRAGMA table_info(user);"
 
       - name: Run PHPUnit tests
-        run: ./vendor/bin/phpunit --testdox
+        run: ./vendor/bin/phpunit --testdox -vvv
 
   frontend-build:
     name: Frontend Build (Node 20)
