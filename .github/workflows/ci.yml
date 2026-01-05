@@ -63,6 +63,9 @@ jobs:
           php bin/console cache:clear --env=test
           php bin/console doctrine:schema:drop --env=test --force --full-database 2>/dev/null || true
           php bin/console doctrine:schema:create --env=test
+          # Debug: show schema to verify columns
+          echo "=== User table schema ==="
+          sqlite3 var/test.db ".schema user"
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --testdox
