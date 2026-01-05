@@ -1578,6 +1578,134 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         html_to_text_converter?: scalar|null, // A service implementing the "Symfony\Component\Mime\HtmlToTextConverter\HtmlToTextConverterInterface". // Default: null
  *     },
  * }
+ * @psalm-type SentryConfig = array{
+ *     dsn?: scalar|null, // If this value is not provided, the SDK will try to read it from the SENTRY_DSN environment variable. If that variable also does not exist, the SDK will not send any events.
+ *     register_error_listener?: bool, // Default: true
+ *     register_error_handler?: bool, // Default: true
+ *     logger?: scalar|null, // The service ID of the PSR-3 logger used to log messages coming from the SDK client. Be aware that setting the same logger of the application may create a circular loop when an event fails to be sent. // Default: null
+ *     options?: array{
+ *         integrations?: mixed, // Default: []
+ *         default_integrations?: bool,
+ *         prefixes?: list<scalar|null>,
+ *         sample_rate?: float, // The sampling factor to apply to events. A value of 0 will deny sending any event, and a value of 1 will send all events.
+ *         enable_tracing?: bool,
+ *         traces_sample_rate?: float, // The sampling factor to apply to transactions. A value of 0 will deny sending any transaction, and a value of 1 will send all transactions.
+ *         traces_sampler?: scalar|null,
+ *         profiles_sample_rate?: float, // The sampling factor to apply to profiles. A value of 0 will deny sending any profiles, and a value of 1 will send all profiles. Profiles are sampled in relation to traces_sample_rate
+ *         enable_logs?: bool,
+ *         enable_metrics?: bool, // Default: true
+ *         attach_stacktrace?: bool,
+ *         attach_metric_code_locations?: bool,
+ *         context_lines?: int,
+ *         environment?: scalar|null, // Default: "%kernel.environment%"
+ *         logger?: scalar|null,
+ *         spotlight?: bool,
+ *         spotlight_url?: scalar|null,
+ *         release?: scalar|null, // Default: "%env(default::SENTRY_RELEASE)%"
+ *         server_name?: scalar|null,
+ *         ignore_exceptions?: list<scalar|null>,
+ *         ignore_transactions?: list<scalar|null>,
+ *         before_send?: scalar|null,
+ *         before_send_transaction?: scalar|null,
+ *         before_send_check_in?: scalar|null,
+ *         before_send_metrics?: scalar|null,
+ *         before_send_log?: scalar|null,
+ *         before_send_metric?: scalar|null,
+ *         trace_propagation_targets?: mixed,
+ *         tags?: array<string, scalar|null>,
+ *         error_types?: scalar|null,
+ *         max_breadcrumbs?: int,
+ *         before_breadcrumb?: mixed,
+ *         in_app_exclude?: list<scalar|null>,
+ *         in_app_include?: list<scalar|null>,
+ *         send_default_pii?: bool,
+ *         max_value_length?: int,
+ *         transport?: scalar|null,
+ *         http_client?: scalar|null,
+ *         http_proxy?: scalar|null,
+ *         http_proxy_authentication?: scalar|null,
+ *         http_connect_timeout?: float, // The maximum number of seconds to wait while trying to connect to a server. It works only when using the default transport.
+ *         http_timeout?: float, // The maximum execution time for the request+response as a whole. It works only when using the default transport.
+ *         http_ssl_verify_peer?: bool,
+ *         http_compression?: bool,
+ *         capture_silenced_errors?: bool,
+ *         max_request_body_size?: "none"|"never"|"small"|"medium"|"always",
+ *         class_serializers?: array<string, scalar|null>,
+ *     },
+ *     messenger?: bool|array{
+ *         enabled?: bool, // Default: true
+ *         capture_soft_fails?: bool, // Default: true
+ *         isolate_breadcrumbs_by_message?: bool, // Default: false
+ *     },
+ *     tracing?: bool|array{
+ *         enabled?: bool, // Default: true
+ *         dbal?: bool|array{
+ *             enabled?: bool, // Default: true
+ *             connections?: list<scalar|null>,
+ *         },
+ *         twig?: bool|array{
+ *             enabled?: bool, // Default: true
+ *         },
+ *         cache?: bool|array{
+ *             enabled?: bool, // Default: true
+ *         },
+ *         http_client?: bool|array{
+ *             enabled?: bool, // Default: true
+ *         },
+ *         console?: array{
+ *             excluded_commands?: list<scalar|null>,
+ *         },
+ *     },
+ * }
+ * @psalm-type NelmioApiDocConfig = array{
+ *     type_info?: bool, // Use the symfony/type-info component for determining types. // Default: false
+ *     use_validation_groups?: bool, // If true, `groups` passed to #[Model] attributes will be used to limit validation constraints // Default: false
+ *     operation_id_generation?: \Nelmio\ApiDocBundle\Describer\OperationIdGeneration::ALWAYS_PREPEND|\Nelmio\ApiDocBundle\Describer\OperationIdGeneration::CONDITIONALLY_PREPEND|\Nelmio\ApiDocBundle\Describer\OperationIdGeneration::NO_PREPEND|"always_prepend"|"conditionally_prepend"|"no_prepend", // How to generate operation ids // Default: "always_prepend"
+ *     cache?: array{
+ *         pool?: scalar|null, // define cache pool to use // Default: null
+ *         item_id?: scalar|null, // define cache item id // Default: null
+ *     },
+ *     documentation?: array<string, mixed>,
+ *     media_types?: list<scalar|null>,
+ *     html_config?: array{ // UI configuration options
+ *         assets_mode?: scalar|null, // Default: "cdn"
+ *         swagger_ui_config?: array<mixed>,
+ *         redocly_config?: array<mixed>,
+ *         stoplight_config?: array<mixed>,
+ *     },
+ *     areas?: array<string, array{ // Default: {"default":{"path_patterns":[],"host_patterns":[],"with_attribute":false,"documentation":[],"name_patterns":[],"disable_default_routes":false,"cache":[],"security":[]}}
+ *         path_patterns?: list<scalar|null>,
+ *         host_patterns?: list<scalar|null>,
+ *         name_patterns?: list<scalar|null>,
+ *         security?: array<string, array{ // Default: []
+ *             type?: scalar|null,
+ *             scheme?: scalar|null,
+ *             in?: scalar|null,
+ *             name?: scalar|null,
+ *             description?: scalar|null,
+ *             openIdConnectUrl?: scalar|null,
+ *             ...<mixed>
+ *         }>,
+ *         with_attribute?: bool, // whether to filter by attributes // Default: false
+ *         disable_default_routes?: bool, // if set disables default routes without attributes // Default: false
+ *         documentation?: array<string, mixed>,
+ *         cache?: array{
+ *             pool?: scalar|null, // define cache pool to use // Default: null
+ *             item_id?: scalar|null, // define cache item id // Default: null
+ *         },
+ *     }>,
+ *     models?: array{
+ *         use_jms?: bool, // Default: false
+ *         names?: list<array{ // Default: []
+ *             alias: scalar|null,
+ *             type: scalar|null,
+ *             groups?: mixed, // Default: null
+ *             options?: mixed, // Default: null
+ *             serializationContext?: list<mixed>,
+ *             areas?: list<scalar|null>,
+ *         }>,
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1590,6 +1718,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     nelmio_cors?: NelmioCorsConfig,
  *     lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *     twig?: TwigConfig,
+ *     sentry?: SentryConfig,
+ *     nelmio_api_doc?: NelmioApiDocConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1603,6 +1733,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         twig?: TwigConfig,
+ *         sentry?: SentryConfig,
+ *         nelmio_api_doc?: NelmioApiDocConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1616,6 +1748,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         twig?: TwigConfig,
+ *         sentry?: SentryConfig,
+ *         nelmio_api_doc?: NelmioApiDocConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1629,6 +1763,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         twig?: TwigConfig,
+ *         sentry?: SentryConfig,
+ *         nelmio_api_doc?: NelmioApiDocConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,
