@@ -37,7 +37,7 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Create .env file
+      - name: Create .env file and JWT keys
         run: |
           echo "APP_ENV=test" > .env
           echo "APP_SECRET=ci-test-secret-not-for-production" >> .env
@@ -45,6 +45,15 @@ jobs:
           echo "DEFAULT_URI=http://localhost:8100" >> .env
           echo "CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'" >> .env
           echo "MAILER_DSN=null://null" >> .env
+          echo "SENTRY_DSN=" >> .env
+          echo "MESSENGER_TRANSPORT_DSN=sync://" >> .env
+          # Generate JWT keys for testing
+          mkdir -p config/jwt
+          openssl genrsa -out config/jwt/private.pem 2048 2>/dev/null
+          openssl rsa -in config/jwt/private.pem -pubout -out config/jwt/public.pem 2>/dev/null
+          echo "JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem" >> .env
+          echo "JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem" >> .env
+          echo "JWT_PASSPHRASE=" >> .env
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
