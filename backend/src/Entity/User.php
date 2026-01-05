@@ -48,6 +48,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $passwordResetExpiresAt = null;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $discordWebhookUrl = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $slackWebhookUrl = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -234,5 +240,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this->passwordResetExpiresAt !== null
             && $this->passwordResetExpiresAt > new \DateTimeImmutable();
+    }
+
+    public function getDiscordWebhookUrl(): ?string
+    {
+        return $this->discordWebhookUrl;
+    }
+
+    public function setDiscordWebhookUrl(?string $discordWebhookUrl): static
+    {
+        $this->discordWebhookUrl = $discordWebhookUrl;
+
+        return $this;
+    }
+
+    public function getSlackWebhookUrl(): ?string
+    {
+        return $this->slackWebhookUrl;
+    }
+
+    public function setSlackWebhookUrl(?string $slackWebhookUrl): static
+    {
+        $this->slackWebhookUrl = $slackWebhookUrl;
+
+        return $this;
+    }
+
+    public function hasWebhooksConfigured(): bool
+    {
+        return $this->discordWebhookUrl !== null || $this->slackWebhookUrl !== null;
     }
 }

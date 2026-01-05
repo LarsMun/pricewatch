@@ -16,6 +16,7 @@ class NotificationService
         private MailerInterface $mailer,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
+        private WebhookService $webhookService,
         private string $fromEmail = 'noreply@prijswacht.nl',
         private string $fromName = 'PrijsWacht',
     ) {}
@@ -24,6 +25,7 @@ class NotificationService
     {
         $notification = Notification::priceDecrease($watch, $oldPrice, $newPrice);
         $this->sendEmail($watch, $notification);
+        $this->sendWebhooks($watch, $notification);
         $this->persist($notification);
         $this->logger->info("Sent price decrease notification for watch #{$watch->getId()}: {$oldPrice} -> {$newPrice}");
         return $notification;
@@ -33,6 +35,7 @@ class NotificationService
     {
         $notification = Notification::priceIncrease($watch, $oldPrice, $newPrice);
         $this->sendEmail($watch, $notification);
+        $this->sendWebhooks($watch, $notification);
         $this->persist($notification);
         $this->logger->info("Sent price increase notification for watch #{$watch->getId()}: {$oldPrice} -> {$newPrice}");
         return $notification;
@@ -42,6 +45,7 @@ class NotificationService
     {
         $notification = Notification::siteBroken($watch);
         $this->sendEmail($watch, $notification);
+        $this->sendWebhooks($watch, $notification);
         $this->persist($notification);
         $this->logger->info("Sent site broken notification for watch #{$watch->getId()}");
         return $notification;
@@ -73,6 +77,14 @@ class NotificationService
         } catch (\Throwable $e) {
             $this->logger->error("Failed to send notification email: " . $e->getMessage());
             throw $e;
+        }
+    }
+
+    private function sendWebhooks(ProductWatch $watch, Notification $notification): void
+    {
+        $user = $watch->getUser();
+        if ($user->hasWebhooksConfigured()) {
+            $this->webhookService->sendNotification($user, $watch, $notification);
         }
     }
 

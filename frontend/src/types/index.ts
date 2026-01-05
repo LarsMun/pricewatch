@@ -3,6 +3,8 @@ export interface User {
   email: string
   isVerified: boolean
   createdAt: string
+  discordWebhookUrl: string | null
+  slackWebhookUrl: string | null
 }
 
 export interface ProductWatch {

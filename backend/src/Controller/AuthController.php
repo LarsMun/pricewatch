@@ -94,7 +94,58 @@ class AuthController extends AbstractController
             'email' => $user->getEmail(),
             'isVerified' => $user->isVerified(),
             'createdAt' => $user->getCreatedAt()->format('c'),
+            'discordWebhookUrl' => $user->getDiscordWebhookUrl(),
+            'slackWebhookUrl' => $user->getSlackWebhookUrl(),
         ]);
+    }
+
+    #[Route('/me/settings', name: 'api_update_settings', methods: ['PATCH'])]
+    public function updateSettings(
+        Request $request,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        $data = json_decode($request->getContent(), true);
+
+        if (!$data) {
+            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (array_key_exists('discordWebhookUrl', $data)) {
+            $url = $data['discordWebhookUrl'];
+            if ($url !== null && $url !== '' && !$this->isValidDiscordWebhook($url)) {
+                return $this->json(['error' => 'Ongeldige Discord webhook URL'], Response::HTTP_BAD_REQUEST);
+            }
+            $user->setDiscordWebhookUrl($url ?: null);
+        }
+
+        if (array_key_exists('slackWebhookUrl', $data)) {
+            $url = $data['slackWebhookUrl'];
+            if ($url !== null && $url !== '' && !$this->isValidSlackWebhook($url)) {
+                return $this->json(['error' => 'Ongeldige Slack webhook URL'], Response::HTTP_BAD_REQUEST);
+            }
+            $user->setSlackWebhookUrl($url ?: null);
+        }
+
+        $entityManager->flush();
+
+        return $this->json([
+            'message' => 'Instellingen opgeslagen',
+            'discordWebhookUrl' => $user->getDiscordWebhookUrl(),
+            'slackWebhookUrl' => $user->getSlackWebhookUrl(),
+        ]);
+    }
+
+    private function isValidDiscordWebhook(string $url): bool
+    {
+        return (bool) preg_match('#^https://discord\.com/api/webhooks/\d+/[\w-]+$#', $url);
+    }
+
+    private function isValidSlackWebhook(string $url): bool
+    {
+        return (bool) preg_match('#^https://hooks\.slack\.com/services/[\w/]+$#', $url);
     }
 
     #[Route('/me', name: 'api_delete_account', methods: ['DELETE'])]
