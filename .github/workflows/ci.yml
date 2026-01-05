@@ -65,13 +65,10 @@ jobs:
           # Clear all caches
           rm -rf var/cache/*
           php bin/console cache:clear --env=test
-          # Also clear doctrine cache if it exists
-          php bin/console doctrine:cache:clear-metadata --env=test 2>/dev/null || true
-          php bin/console doctrine:cache:clear-query --env=test 2>/dev/null || true
-          php bin/console doctrine:cache:clear-result --env=test 2>/dev/null || true
-          # Create fresh database
+          # Create fresh database with schema update
           rm -f var/test.db
-          php bin/console doctrine:schema:create --env=test
+          touch var/test.db
+          php bin/console doctrine:schema:update --force --env=test
           # Debug: verify schema
           echo "=== All columns in user table ==="
           sqlite3 var/test.db "PRAGMA table_info(user);"
