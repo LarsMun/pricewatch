@@ -78,13 +78,9 @@ FROM base AS production
 # Copy application from builder
 COPY --from=builder /var/www/html /var/www/html
 
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/var
-
-# Create required directories
+# Create required directories and set permissions
 RUN mkdir -p var/cache var/log \
-    && chown -R www-data:www-data var
+    && chown -R www-data:www-data /var/www/html
 
 # Warmup cache
 RUN php bin/console cache:warmup --env=prod
