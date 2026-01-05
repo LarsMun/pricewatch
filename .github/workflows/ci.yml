@@ -58,8 +58,9 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Create test database schema
+      - name: Clear cache and create test database schema
         run: |
+          php bin/console cache:clear --env=test
           php bin/console doctrine:schema:drop --env=test --force --full-database 2>/dev/null || true
           php bin/console doctrine:schema:create --env=test
 
