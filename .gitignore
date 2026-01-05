@@ -26,7 +26,9 @@ phpunit.xml
 # Claude Code
 .claude/
 
-# Build cache
+# Build output
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
 .vite/
 
 # OS
