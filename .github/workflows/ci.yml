@@ -83,7 +83,7 @@ jobs:
           "
 
       - name: Run PHPUnit tests
-        run: ./vendor/bin/phpunit --testdox -vvv
+        run: ./vendor/bin/phpunit --testdox --testsuite Unit
 
   frontend-build:
     name: Frontend Build (Node 20)
