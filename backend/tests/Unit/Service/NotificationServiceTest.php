@@ -7,6 +7,7 @@ use App\Entity\ProductWatch;
 use App\Entity\User;
 use App\Enum\NotificationType;
 use App\Service\NotificationService;
+use App\Service\WebhookService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -19,17 +20,20 @@ class NotificationServiceTest extends TestCase
     private MockObject&MailerInterface $mailer;
     private MockObject&EntityManagerInterface $em;
     private MockObject&LoggerInterface $logger;
+    private MockObject&WebhookService $webhookService;
 
     protected function setUp(): void
     {
         $this->mailer = $this->createMock(MailerInterface::class);
         $this->em = $this->createMock(EntityManagerInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->webhookService = $this->createMock(WebhookService::class);
 
         $this->service = new NotificationService(
             $this->mailer,
             $this->em,
-            $this->logger
+            $this->logger,
+            $this->webhookService
         );
     }
 
