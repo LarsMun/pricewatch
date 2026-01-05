@@ -82,8 +82,7 @@ COPY --from=builder /var/www/html /var/www/html
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data /var/www/html
 
-# Warmup cache
-RUN php bin/console cache:warmup --env=prod
+# Cache warmup happens at runtime via entrypoint
 
 EXPOSE 80
 
