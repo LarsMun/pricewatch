@@ -70,6 +70,11 @@ COPY backend/composer.json backend/composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 COPY backend/ .
+
+# Create minimal .env for production (real values come from Docker environment)
+# The .env file is in .gitignore, so we need to create it here
+RUN echo "APP_ENV=prod" > .env
+
 RUN composer dump-autoload --optimize --classmap-authoritative
 
 # Production stage
