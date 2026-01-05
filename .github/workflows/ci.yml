@@ -65,10 +65,15 @@ jobs:
           # Clear all caches
           rm -rf var/cache/*
           php bin/console cache:clear --env=test
+          # Show what Doctrine knows about the User entity
+          echo "=== Doctrine schema validation ==="
+          php bin/console doctrine:schema:validate --env=test || true
+          echo "=== Entity mapping info ==="
+          php bin/console doctrine:mapping:info --env=test
           # Create fresh database with schema update
           rm -f var/test.db
           touch var/test.db
-          php bin/console doctrine:schema:update --force --env=test
+          php bin/console doctrine:schema:update --force --env=test --dump-sql
           # Debug: verify schema
           echo "=== All columns in user table ==="
           sqlite3 var/test.db "PRAGMA table_info(user);"
