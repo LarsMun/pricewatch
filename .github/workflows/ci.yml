@@ -56,16 +56,22 @@ jobs:
           echo "JWT_PASSPHRASE=" >> .env
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: |
+          composer install --prefer-dist --no-progress --no-interaction
+          composer dump-autoload --optimize
 
       - name: Clear cache and create test database schema
         run: |
           php bin/console cache:clear --env=test
-          php bin/console doctrine:schema:drop --env=test --force --full-database 2>/dev/null || true
+          rm -f var/test.db
           php bin/console doctrine:schema:create --env=test
-          # Debug: show schema to verify columns
+          # Debug: show schema and confirm column exists
+          echo "=== Database location ==="
+          ls -la var/*.db || echo "No db files in var/"
           echo "=== User table schema ==="
-          sqlite3 var/test.db ".schema user"
+          sqlite3 var/test.db ".schema user" || echo "sqlite3 command failed"
+          echo "=== All columns in user table ==="
+          sqlite3 var/test.db "PRAGMA table_info(user);" || echo "pragma failed"
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --testdox
