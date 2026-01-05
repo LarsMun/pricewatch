@@ -1,0 +1,100 @@
+services:
+  # MariaDB Database
+  db:
+    image: mariadb:11.2
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE:-pricewatch}
+      MARIADB_USER: ${DB_USER:-pricewatch}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  # PHP Backend (Symfony API)
+  api:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    restart: always
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: mysql://${DB_USER:-pricewatch}:${DB_PASSWORD}@db:3306/${DB_DATABASE:-pricewatch}?serverVersion=mariadb-11.2.0
+      MAILER_DSN: ${MAILER_DSN}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
+      FRONTEND_URL: ${FRONTEND_URL:-https://prijswacht.nl}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https://prijswacht\.nl$}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.prijswacht.nl`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=80"
+
+  # React Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.prijswacht.nl}
+    restart: always
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`prijswacht.nl`) || Host(`www.prijswacht.nl`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Redirect www to non-www
+      - "traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\\.(.*)"
+      - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$${1}"
+      - "traefik.http.routers.frontend.middlewares=www-redirect"
+
+  # Price check scheduler (cron)
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    restart: always
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: mysql://${DB_USER:-pricewatch}:${DB_PASSWORD}@db:3306/${DB_DATABASE:-pricewatch}?serverVersion=mariadb-11.2.0
+      MAILER_DSN: ${MAILER_DSN}
+    command: >
+      sh -c "while true; do
+        php bin/console app:check-prices --limit=50;
+        sleep 300;
+      done"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  db-data:
+
+networks:
+  internal:
+    driver: bridge
+  web:
+    external: true
