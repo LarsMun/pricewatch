@@ -158,3 +158,26 @@ export interface AnalyzeUrlResponse {
 export interface WatchDetailResponse extends ProductWatch {
   priceChecks: PriceCheck[]
 }
+
+export interface Collection {
+  id: number
+  name: string
+  description: string | null
+  watchCount: number
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface CollectionWithWatches extends Collection {
+  watches: ProductWatch[]
+}
+
+export interface CreateCollectionRequest {
+  name: string
+  description?: string
+}
+
+export interface UpdateCollectionRequest {
+  name?: string
+  description?: string | null
+}

@@ -1,16 +1,39 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useCheckAllWatches } from '../hooks/useWatches'
+import { useCheckAllWatches, useWatches } from '../hooks/useWatches'
+import { useCollections, useCollection } from '../hooks/useCollections'
 import WatchList from '../components/WatchList'
 import AddWatchModal from '../components/AddWatchModal'
 import VerificationBanner from '../components/VerificationBanner'
+import CollectionTabs from '../components/CollectionTabs'
+import CreateCollectionModal from '../components/CreateCollectionModal'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isCreateCollectionModalOpen, setIsCreateCollectionModalOpen] = useState(false)
+  const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null)
   const checkAll = useCheckAllWatches()
+  const { data: watches } = useWatches()
+  const { data: collections } = useCollections()
+  const { data: selectedCollectionData } = useCollection(selectedCollectionId)
+
+  // Build a map of collectionId -> watchIds for filtering
+  const collectionWatches = useMemo(() => {
+    const map = new Map<number, number[]>()
+    if (selectedCollectionData) {
+      map.set(selectedCollectionData.id, selectedCollectionData.watches.map(w => w.id))
+    }
+    // Also include data from all collections for the dropdown
+    collections?.forEach(c => {
+      if (!map.has(c.id) && c.watchCount > 0) {
+        // We don't have the watch IDs here, they'll be fetched when that collection is selected
+      }
+    })
+    return map
+  }, [selectedCollectionData, collections])
 
   const handleLogout = () => {
     logout()
@@ -55,8 +78,20 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <VerificationBanner />
 
+        {/* Collection Tabs */}
+        <CollectionTabs
+          selectedCollection={selectedCollectionId}
+          onSelectCollection={setSelectedCollectionId}
+          onCreateNew={() => setIsCreateCollectionModalOpen(true)}
+          totalWatchCount={watches?.length || 0}
+        />
+
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Mijn prijswatches</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {selectedCollectionId && collections
+              ? collections.find(c => c.id === selectedCollectionId)?.name || 'Collectie'
+              : 'Mijn prijswatches'}
+          </h2>
           <div className="flex items-center gap-3">
             <button
               onClick={handleCheckAll}
@@ -113,12 +148,20 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <WatchList />
+        <WatchList
+          selectedCollectionId={selectedCollectionId}
+          collectionWatches={collectionWatches}
+        />
       </main>
 
       <AddWatchModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+      />
+
+      <CreateCollectionModal
+        isOpen={isCreateCollectionModalOpen}
+        onClose={() => setIsCreateCollectionModalOpen(false)}
       />
     </div>
   )

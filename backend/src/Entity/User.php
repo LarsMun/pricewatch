@@ -61,9 +61,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: ProductWatch::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $productWatches;
 
+    /** @var Collection<int, \App\Entity\Collection> */
+    #[ORM\OneToMany(targetEntity: \App\Entity\Collection::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $collections;
+
     public function __construct()
     {
         $this->productWatches = new ArrayCollection();
+        $this->collections = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -166,6 +171,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         if ($this->productWatches->removeElement($productWatch)) {
             if ($productWatch->getUser() === $this) {
                 $productWatch->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /** @return Collection<int, \App\Entity\Collection> */
+    public function getCollections(): Collection
+    {
+        return $this->collections;
+    }
+
+    public function addCollection(\App\Entity\Collection $collection): static
+    {
+        if (!$this->collections->contains($collection)) {
+            $this->collections->add($collection);
+            $collection->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCollection(\App\Entity\Collection $collection): static
+    {
+        if ($this->collections->removeElement($collection)) {
+            if ($collection->getUser() === $this) {
+                $collection->setUser(null);
             }
         }
 

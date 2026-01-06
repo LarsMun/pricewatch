@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWatches, useDeleteWatch, useToggleWatch } from '../hooks/useWatches'
-import type { ProductWatch } from '../types'
+import { useCollections, useAddWatchToCollection, useRemoveWatchFromCollection } from '../hooks/useCollections'
+import type { ProductWatch, Collection } from '../types'
 
 function formatPrice(price: string | null, currency: string): string {
   if (!price) return '-'
@@ -50,7 +52,78 @@ function WatchStatusBadge({ watch }: { watch: ProductWatch }) {
   )
 }
 
-function WatchCard({ watch }: { watch: ProductWatch }) {
+interface CollectionDropdownProps {
+  watch: ProductWatch
+  collections: Collection[]
+  watchCollectionIds: number[]
+}
+
+function CollectionDropdown({ watch, collections, watchCollectionIds }: CollectionDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const addToCollection = useAddWatchToCollection()
+  const removeFromCollection = useRemoveWatchFromCollection()
+
+  const handleToggleCollection = (collectionId: number, isInCollection: boolean) => {
+    if (isInCollection) {
+      removeFromCollection.mutate({ collectionId, watchId: watch.id })
+    } else {
+      addToCollection.mutate({ collectionId, watchId: watch.id })
+    }
+  }
+
+  if (collections.length === 0) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition"
+        title="Collecties beheren"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-20 min-w-[180px]">
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b">
+              Collecties
+            </div>
+            {collections.map((collection) => {
+              const isInCollection = watchCollectionIds.includes(collection.id)
+              return (
+                <button
+                  key={collection.id}
+                  onClick={() => handleToggleCollection(collection.id, isInCollection)}
+                  disabled={addToCollection.isPending || removeFromCollection.isPending}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center justify-between gap-2 disabled:opacity-50"
+                >
+                  <span className="truncate">{collection.name}</span>
+                  {isInCollection && (
+                    <svg className="w-4 h-4 text-primary-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+interface WatchCardProps {
+  watch: ProductWatch
+  collections: Collection[]
+  watchCollectionIds: number[]
+}
+
+function WatchCard({ watch, collections, watchCollectionIds }: WatchCardProps) {
   const deleteWatch = useDeleteWatch()
   const toggleWatch = useToggleWatch()
 
@@ -79,11 +152,18 @@ function WatchCard({ watch }: { watch: ProductWatch }) {
         <div className="flex justify-between items-start gap-2">
           <Link
             to={`/watch/${watch.id}`}
-            className="text-lg font-semibold text-gray-900 hover:text-primary-600 line-clamp-2"
+            className="text-lg font-semibold text-gray-900 hover:text-primary-600 line-clamp-2 flex-1"
           >
             {watch.productName || watch.domain}
           </Link>
-          <WatchStatusBadge watch={watch} />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <CollectionDropdown
+              watch={watch}
+              collections={collections}
+              watchCollectionIds={watchCollectionIds}
+            />
+            <WatchStatusBadge watch={watch} />
+          </div>
         </div>
       </div>
 
@@ -164,8 +244,17 @@ function WatchCard({ watch }: { watch: ProductWatch }) {
   )
 }
 
-export default function WatchList() {
-  const { data: watches, isLoading, error } = useWatches()
+interface WatchListProps {
+  selectedCollectionId?: number | null
+  collectionWatches?: Map<number, number[]> // collectionId -> watchIds
+}
+
+export default function WatchList({ selectedCollectionId, collectionWatches }: WatchListProps) {
+  const { data: watches, isLoading: watchesLoading, error: watchesError } = useWatches()
+  const { data: collections, isLoading: collectionsLoading } = useCollections()
+
+  const isLoading = watchesLoading || collectionsLoading
+  const error = watchesError
 
   if (isLoading) {
     return (
@@ -191,10 +280,42 @@ export default function WatchList() {
     )
   }
 
+  // Filter watches by selected collection
+  let filteredWatches = watches
+  if (selectedCollectionId && collectionWatches) {
+    const watchIdsInCollection = collectionWatches.get(selectedCollectionId) || []
+    filteredWatches = watches.filter((w) => watchIdsInCollection.includes(w.id))
+  }
+
+  // Build a map of watchId -> collectionIds for the dropdown
+  const watchToCollections = new Map<number, number[]>()
+  if (collectionWatches) {
+    collectionWatches.forEach((watchIds, collectionId) => {
+      watchIds.forEach((watchId) => {
+        const existing = watchToCollections.get(watchId) || []
+        existing.push(collectionId)
+        watchToCollections.set(watchId, existing)
+      })
+    })
+  }
+
+  if (filteredWatches.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        Geen watches in deze collectie.
+      </div>
+    )
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {watches.map((watch) => (
-        <WatchCard key={watch.id} watch={watch} />
+      {filteredWatches.map((watch) => (
+        <WatchCard
+          key={watch.id}
+          watch={watch}
+          collections={collections || []}
+          watchCollectionIds={watchToCollections.get(watch.id) || []}
+        />
       ))}
     </div>
   )
