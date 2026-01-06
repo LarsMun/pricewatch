@@ -1,0 +1,23 @@
+# Disable rate limiting in test environment
+framework:
+    rate_limiter:
+        login_endpoint:
+            policy: no_limit
+
+        registration_endpoint:
+            policy: no_limit
+
+        password_reset_endpoint:
+            policy: no_limit
+
+        resend_verification_endpoint:
+            policy: no_limit
+
+        validate_endpoint:
+            policy: no_limit
+
+        check_all_user:
+            policy: no_limit
+
+        domain_scraper:
+            policy: no_limit

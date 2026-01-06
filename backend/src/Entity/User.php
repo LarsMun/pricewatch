@@ -196,7 +196,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function isVerificationTokenValid(string $token): bool
     {
-        if ($this->verificationToken !== $token) {
+        if ($this->verificationToken === null) {
+            return false;
+        }
+
+        if (!hash_equals($this->verificationToken, $token)) {
             return false;
         }
 
@@ -234,7 +238,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function isPasswordResetTokenValid(string $token): bool
     {
-        if ($this->passwordResetToken !== $token) {
+        if ($this->passwordResetToken === null) {
+            return false;
+        }
+
+        if (!hash_equals($this->passwordResetToken, $token)) {
             return false;
         }
 

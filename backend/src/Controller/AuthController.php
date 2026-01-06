@@ -11,12 +11,19 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api')]
 class AuthController extends AbstractController
 {
+    public function __construct(
+        private RateLimiterFactory $loginEndpointLimiter,
+        private RateLimiterFactory $registrationEndpointLimiter,
+        private RateLimiterFactory $passwordResetEndpointLimiter,
+        private RateLimiterFactory $resendVerificationEndpointLimiter,
+    ) {}
     #[Route('/login', name: 'api_login', methods: ['POST'])]
     public function login(): JsonResponse
     {
@@ -39,6 +46,14 @@ class AuthController extends AbstractController
         ValidatorInterface $validator,
         EmailVerificationService $verificationService
     ): JsonResponse {
+        // Rate limiting
+        $limiter = $this->registrationEndpointLimiter->create($request->getClientIp());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json([
+                'error' => 'Te veel registratiepogingen. Probeer het later opnieuw.'
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (!$data) {
@@ -260,8 +275,17 @@ class AuthController extends AbstractController
 
     #[Route('/resend-verification', name: 'api_resend_verification', methods: ['POST'])]
     public function resendVerification(
+        Request $request,
         EmailVerificationService $verificationService
     ): JsonResponse {
+        // Rate limiting
+        $limiter = $this->resendVerificationEndpointLimiter->create($request->getClientIp());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json([
+                'error' => 'Te veel verificatie emails aangevraagd. Probeer het later opnieuw.'
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         /** @var User $user */
         $user = $this->getUser();
 
@@ -281,6 +305,14 @@ class AuthController extends AbstractController
         Request $request,
         PasswordResetService $resetService
     ): JsonResponse {
+        // Rate limiting
+        $limiter = $this->passwordResetEndpointLimiter->create($request->getClientIp());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json([
+                'error' => 'Te veel wachtwoord reset verzoeken. Probeer het later opnieuw.'
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $data = json_decode($request->getContent(), true);
         $email = $data['email'] ?? null;
 

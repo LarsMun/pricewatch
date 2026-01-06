@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\ProductWatch;
 use App\Entity\User;
+use App\Message\CheckPriceMessage;
 use App\Repository\ProductWatchRepository;
 use App\Repository\PriceCheckRepository;
 use App\Service\PriceCheckService;
@@ -14,6 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -29,6 +31,7 @@ class ProductWatchController extends AbstractController
         private UrlAnalyzerService $urlAnalyzer,
         private UrlValidator $urlValidator,
         private RateLimiterFactory $checkAllUserLimiter,
+        private MessageBusInterface $messageBus,
     ) {}
 
     #[Route('', name: 'api_watches_list', methods: ['GET'])]
@@ -105,25 +108,15 @@ class ProductWatchController extends AbstractController
 
         $watches = $this->watchRepository->findBy(['user' => $user, 'isActive' => true]);
 
-        $results = ['total' => count($watches), 'success' => 0, 'failed' => 0, 'checks' => []];
-
+        // Queue all checks asynchronously
         foreach ($watches as $watch) {
-            try {
-                $check = $this->priceCheckService->check($watch);
-                if ($check->wasSuccessful()) {
-                    $results['success']++;
-                    $results['checks'][] = ['id' => $watch->getId(), 'name' => $watch->getProductName() ?? $watch->getDomain(), 'success' => true, 'price' => $check->getPrice()];
-                } else {
-                    $results['failed']++;
-                    $results['checks'][] = ['id' => $watch->getId(), 'name' => $watch->getProductName() ?? $watch->getDomain(), 'success' => false, 'error' => $check->getErrorMessage()];
-                }
-            } catch (\Throwable $e) {
-                $results['failed']++;
-                $results['checks'][] = ['id' => $watch->getId(), 'name' => $watch->getProductName() ?? $watch->getDomain(), 'success' => false, 'error' => $e->getMessage()];
-            }
+            $this->messageBus->dispatch(new CheckPriceMessage($watch->getId()));
         }
 
-        return $this->json($results);
+        return $this->json([
+            'message' => 'Prijschecks worden verwerkt',
+            'queued' => count($watches),
+        ]);
     }
 
     #[Route('', name: 'api_watches_create', methods: ['POST'])]
@@ -188,15 +181,11 @@ class ProductWatchController extends AbstractController
         $this->entityManager->persist($watch);
         $this->entityManager->flush();
 
-        // Run initial price check to get the first price (and image if not provided)
-        try {
-            $this->priceCheckService->check($watch);
-        } catch (\Throwable $e) {
-            // Log but don't fail - watch is created, price check can run later
-        }
+        // Queue initial price check asynchronously (non-blocking)
+        $this->messageBus->dispatch(new CheckPriceMessage($watch->getId()));
 
         return $this->json([
-            'message' => 'Watch aangemaakt',
+            'message' => 'Watch aangemaakt, eerste prijscheck wordt verwerkt',
             'watch' => $this->serializeWatch($watch),
         ], Response::HTTP_CREATED);
     }

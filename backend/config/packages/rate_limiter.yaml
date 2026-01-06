@@ -14,3 +14,23 @@ framework:
             policy: fixed_window
             limit: 1
             interval: '15 minutes'
+
+        login_endpoint:
+            policy: sliding_window
+            limit: 5
+            interval: '1 minute'
+
+        registration_endpoint:
+            policy: fixed_window
+            limit: 3
+            interval: '1 hour'
+
+        password_reset_endpoint:
+            policy: fixed_window
+            limit: 3
+            interval: '15 minutes'
+
+        resend_verification_endpoint:
+            policy: fixed_window
+            limit: 3
+            interval: '15 minutes'

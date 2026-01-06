@@ -20,6 +20,8 @@ class BookmarkletController extends AbstractController
         private PriceExtractor $priceExtractor,
         private UrlValidator $urlValidator,
         private RateLimiterFactory $validateEndpointLimiter,
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire('%env(FRONTEND_URL)%')]
+        private string $frontendUrl,
     ) {}
 
     #[Route('/watches/validate', name: 'api_watches_validate', methods: ['POST'])]
@@ -99,14 +101,14 @@ class BookmarkletController extends AbstractController
         return new Response($js, 200, [
             'Content-Type' => 'application/javascript',
             'Cache-Control' => 'no-cache',
-            'Access-Control-Allow-Origin' => '*',
         ]);
     }
 
     private function generateBookmarkletCode(): string
     {
-        return <<<'JSEOF'
-(function() {
+        $frontendUrl = json_encode($this->frontendUrl);
+
+        return "(function() {
     try {
         if (window.__prijswacht_active) {
             alert('PrijsWacht is al actief op deze pagina');
@@ -114,11 +116,11 @@ class BookmarkletController extends AbstractController
         }
         window.__prijswacht_active = true;
 
-        var FRONTEND_URL = 'http://localhost:3100';
+        var FRONTEND_URL = {$frontendUrl};
 
         // Check for JSON-LD product data first
         function findJsonLdPrice() {
-            var scripts = document.querySelectorAll('script[type="application/ld+json"]');
+            var scripts = document.querySelectorAll('script[type=\"application/ld+json\"]');
             for (var i = 0; i < scripts.length; i++) {
                 try {
                     var data = JSON.parse(scripts[i].textContent);
@@ -166,11 +168,11 @@ class BookmarkletController extends AbstractController
         }
 
         function redirect(selector, rawText) {
-            var params = new URLSearchParams({ 
-                url: window.location.href, 
-                selector: selector, 
-                rawText: rawText, 
-                title: document.title 
+            var params = new URLSearchParams({
+                url: window.location.href,
+                selector: selector,
+                rawText: rawText,
+                title: document.title
             });
             window.location.href = FRONTEND_URL + '/add-watch?' + params.toString();
         }
@@ -179,10 +181,10 @@ class BookmarkletController extends AbstractController
         if (jsonLdData) {
             dialog.innerHTML = '<h2>Prijs automatisch gevonden!</h2>' +
                 '<p>Deze site heeft gestructureerde data (JSON-LD). Dit werkt het beste.</p>' +
-                '<div class="prijswacht-price">€ ' + jsonLdData.price + '</div>' +
-                '<div style="display:flex;gap:10px;margin-top:15px;">' +
-                '<button class="prijswacht-btn prijswacht-btn-success" id="prijswacht-use-jsonld" style="flex:1;">Gebruiken (aanbevolen)</button>' +
-                '<button class="prijswacht-btn prijswacht-btn-secondary" id="prijswacht-manual">Handmatig selecteren</button>' +
+                '<div class=\"prijswacht-price\">€ ' + jsonLdData.price + '</div>' +
+                '<div style=\"display:flex;gap:10px;margin-top:15px;\">' +
+                '<button class=\"prijswacht-btn prijswacht-btn-success\" id=\"prijswacht-use-jsonld\" style=\"flex:1;\">Gebruiken (aanbevolen)</button>' +
+                '<button class=\"prijswacht-btn prijswacht-btn-secondary\" id=\"prijswacht-manual\">Handmatig selecteren</button>' +
                 '</div>';
 
             document.getElementById('prijswacht-use-jsonld').onclick = function() {
@@ -198,7 +200,7 @@ class BookmarkletController extends AbstractController
         }
 
         function showManualSelection() {
-            dialog.innerHTML = '<h2>PrijsWacht</h2><p>Klik op het prijselement dat je wilt volgen</p><button class="prijswacht-btn prijswacht-btn-secondary" id="prijswacht-cancel">Annuleren</button>';
+            dialog.innerHTML = '<h2>PrijsWacht</h2><p>Klik op het prijselement dat je wilt volgen</p><button class=\"prijswacht-btn prijswacht-btn-secondary\" id=\"prijswacht-cancel\">Annuleren</button>';
             document.getElementById('prijswacht-cancel').onclick = cleanup;
             document.addEventListener('mouseover', onMouseOver, true);
             document.addEventListener('mouseout', onMouseOut, true);
@@ -224,7 +226,7 @@ class BookmarkletController extends AbstractController
         function genSelector(el) {
             if (el.id) return '#' + el.id;
             if (el.className && typeof el.className === 'string') {
-                var cls = el.className.trim().split(/\s+/).filter(function(c) { return c && c.length > 2 && !c.startsWith('prijswacht'); }).slice(0, 2);
+                var cls = el.className.trim().split(/\\s+/).filter(function(c) { return c && c.length > 2 && !c.startsWith('prijswacht'); }).slice(0, 2);
                 if (cls.length) {
                     var sel = '.' + cls.join('.');
                     try { if (document.querySelectorAll(sel).length <= 5) return sel; } catch(e) {}
@@ -264,12 +266,12 @@ class BookmarkletController extends AbstractController
             var rawText = el.textContent.trim().substring(0, 100);
 
             dialog.innerHTML = '<h2>Element geselecteerd</h2>' +
-                '<div class="prijswacht-price">' + rawText + '</div>' +
-                '<p style="font-size:11px;color:#999;word-break:break-all;">Selector: ' + selector + '</p>' +
-                '<p style="font-size:12px;color:#f59e0b;margin:10px 0;">⚠️ Let op: Dit werkt alleen als de prijs in de HTML staat (niet via JavaScript geladen)</p>' +
-                '<div style="display:flex;gap:10px;margin-top:15px;">' +
-                '<button class="prijswacht-btn prijswacht-btn-primary" id="prijswacht-confirm" style="flex:1;">Toevoegen</button>' +
-                '<button class="prijswacht-btn prijswacht-btn-secondary" id="prijswacht-retry">Opnieuw</button>' +
+                '<div class=\"prijswacht-price\">' + rawText + '</div>' +
+                '<p style=\"font-size:11px;color:#999;word-break:break-all;\">Selector: ' + selector + '</p>' +
+                '<p style=\"font-size:12px;color:#f59e0b;margin:10px 0;\">Let op: Dit werkt alleen als de prijs in de HTML staat (niet via JavaScript geladen)</p>' +
+                '<div style=\"display:flex;gap:10px;margin-top:15px;\">' +
+                '<button class=\"prijswacht-btn prijswacht-btn-primary\" id=\"prijswacht-confirm\" style=\"flex:1;\">Toevoegen</button>' +
+                '<button class=\"prijswacht-btn prijswacht-btn-secondary\" id=\"prijswacht-retry\">Opnieuw</button>' +
                 '</div>';
 
             document.getElementById('prijswacht-confirm').onclick = function() {
@@ -292,7 +294,6 @@ class BookmarkletController extends AbstractController
         alert('PrijsWacht fout: ' + err.message);
         console.error('PrijsWacht error:', err);
     }
-})();
-JSEOF;
+})();";
     }
 }

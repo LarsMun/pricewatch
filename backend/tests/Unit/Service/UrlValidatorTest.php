@@ -29,35 +29,35 @@ class UrlValidatorTest extends TestCase
     public function testBlocksLocalhost(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Deze host is niet toegestaan');
+        $this->expectExceptionMessage('Localhost URLs zijn niet toegestaan');
         $this->validator->validate('http://localhost/admin');
     }
 
     public function testBlocks127001(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Deze host is niet toegestaan');
+        $this->expectExceptionMessage('Localhost URLs zijn niet toegestaan');
         $this->validator->validate('http://127.0.0.1/admin');
     }
 
     public function testBlocksPrivateIp10x(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Private IP-adressen zijn niet toegestaan');
+        $this->expectExceptionMessage('Private IP adressen zijn niet toegestaan');
         $this->validator->validate('http://10.0.0.1/internal');
     }
 
     public function testBlocksPrivateIp172x(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Private IP-adressen zijn niet toegestaan');
+        $this->expectExceptionMessage('Private IP adressen zijn niet toegestaan');
         $this->validator->validate('http://172.16.0.1/internal');
     }
 
     public function testBlocksPrivateIp192168x(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Private IP-adressen zijn niet toegestaan');
+        $this->expectExceptionMessage('Private IP adressen zijn niet toegestaan');
         $this->validator->validate('http://192.168.1.1/internal');
     }
 
@@ -78,23 +78,21 @@ class UrlValidatorTest extends TestCase
     public function testBlocksZeroZeroZeroZero(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Deze host is niet toegestaan');
+        $this->expectExceptionMessage('Localhost URLs zijn niet toegestaan');
         $this->validator->validate('http://0.0.0.0/');
     }
 
     public function testBlocksIpv6Localhost(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Deze host is niet toegestaan');
+        $this->expectExceptionMessage('Localhost URLs zijn niet toegestaan');
         $this->validator->validate('http://[::1]/');
     }
 
     public function testBlocksUrlWithoutHost(): void
     {
-        // Note: "http:///path/only" is so malformed that PHP returns false for scheme,
-        // so it fails the scheme check before the host check
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Alleen HTTP en HTTPS URLs zijn toegestaan');
+        $this->expectExceptionMessage('Ongeldige URL');
         $this->validator->validate('http:///path/only');
     }
 
@@ -113,7 +111,8 @@ class UrlValidatorTest extends TestCase
 
     public function testAllowsSubdomain(): void
     {
-        $this->validator->validate('https://api.example.com/v1/data');
+        // Use a real domain that will resolve
+        $this->validator->validate('https://www.google.com/');
         $this->addToAssertionCount(1);
     }
 
@@ -121,7 +120,17 @@ class UrlValidatorTest extends TestCase
     {
         // Link-local address
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Private IP-adressen zijn niet toegestaan');
+        $this->expectExceptionMessage('Private IP adressen zijn niet toegestaan');
         $this->validator->validate('http://169.254.169.254/metadata');
+    }
+
+    public function testValidateAndResolveReturnsResolvedUrl(): void
+    {
+        // Test that validateAndResolve returns both resolved URL and original host
+        $result = $this->validator->validateAndResolve('https://www.google.com/');
+
+        $this->assertArrayHasKey('url', $result);
+        $this->assertArrayHasKey('originalHost', $result);
+        $this->assertEquals('www.google.com', $result['originalHost']);
     }
 }

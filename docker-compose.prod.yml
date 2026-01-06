@@ -3,6 +3,13 @@ services:
   db:
     image: mariadb:11.2
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MARIADB_DATABASE: ${DB_DATABASE:-pricewatch}
@@ -24,6 +31,13 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile.prod
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       APP_ENV: prod
       APP_SECRET: ${APP_SECRET}
@@ -58,6 +72,13 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-https://api.shopq.app}
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          memory: 64M
     networks:
       - web
     labels:
@@ -77,6 +98,13 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile.prod
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          memory: 192M
     environment:
       APP_ENV: prod
       APP_SECRET: ${APP_SECRET}

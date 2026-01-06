@@ -117,8 +117,10 @@ class PriceCheckService
 
         $watch->scheduleNextCheck();
 
-        $this->entityManager->persist($priceCheck);
-        $this->entityManager->flush();
+        // Wrap in transaction to ensure atomicity of watch + priceCheck updates
+        $this->entityManager->wrapInTransaction(function () use ($priceCheck): void {
+            $this->entityManager->persist($priceCheck);
+        });
 
         return $priceCheck;
     }
@@ -241,8 +243,10 @@ class PriceCheckService
         $watch->setLastErrorMessage($reason);
         $watch->scheduleNextCheck();
 
-        $this->entityManager->persist($priceCheck);
-        $this->entityManager->flush();
+        // Wrap in transaction to ensure atomicity
+        $this->entityManager->wrapInTransaction(function () use ($priceCheck): void {
+            $this->entityManager->persist($priceCheck);
+        });
 
         return $priceCheck;
     }

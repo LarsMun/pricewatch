@@ -185,6 +185,9 @@ class AdminController extends AbstractController
             return $this->json(["error" => "User not found"], Response::HTTP_NOT_FOUND);
         }
 
+        /** @var User $currentUser */
+        $currentUser = $this->getUser();
+
         $data = json_decode($request->getContent(), true);
         $action = $data["action"] ?? null;
 
@@ -195,6 +198,21 @@ class AdminController extends AbstractController
                 $user->setRoles(array_values(array_unique($roles)));
             }
         } elseif ($action === "revoke_admin") {
+            // Prevent self-demotion
+            if ($user->getId() === $currentUser->getId()) {
+                return $this->json([
+                    "error" => "Je kunt je eigen admin rol niet verwijderen"
+                ], Response::HTTP_FORBIDDEN);
+            }
+
+            // Prevent removing the last admin
+            $adminCount = $userRepo->countByRole("ROLE_ADMIN");
+            if ($adminCount <= 1) {
+                return $this->json([
+                    "error" => "Er moet minimaal één admin blijven"
+                ], Response::HTTP_FORBIDDEN);
+            }
+
             $roles = array_filter($user->getRoles(), fn($r) => $r !== "ROLE_ADMIN");
             $user->setRoles(array_values($roles));
         } else {

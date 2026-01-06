@@ -45,6 +45,11 @@ docker compose -f $COMPOSE_FILE run --rm api php bin/console cache:warmup --env=
 echo "▶️  Starting new containers..."
 docker compose -f $COMPOSE_FILE up -d
 
+# Fix JWT key permissions
+echo "🔒 Securing JWT keys..."
+docker compose -f $COMPOSE_FILE exec -T api chmod 600 /var/www/html/config/jwt/private.pem 2>/dev/null || true
+docker compose -f $COMPOSE_FILE exec -T api chmod 644 /var/www/html/config/jwt/public.pem 2>/dev/null || true
+
 # Health check
 echo "🏥 Running health check..."
 sleep 5

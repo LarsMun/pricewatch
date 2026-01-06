@@ -87,6 +87,10 @@ COPY --from=builder /var/www/html /var/www/html
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data /var/www/html
 
+# Secure JWT keys (if present)
+RUN chmod 600 config/jwt/private.pem 2>/dev/null || true \
+    && chmod 644 config/jwt/public.pem 2>/dev/null || true
+
 # Cache warmup happens at runtime via entrypoint
 
 EXPOSE 80
