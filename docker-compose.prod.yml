@@ -49,6 +49,8 @@ services:
       DEFAULT_URI: ${FRONTEND_URL:-https://shopq.app}
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
       SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - ./backend/config/jwt:/var/www/html/config/jwt:ro
     depends_on:
       db:
         condition: service_healthy
