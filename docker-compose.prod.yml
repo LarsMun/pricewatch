@@ -27,9 +27,7 @@ services:
 
   # PHP Backend (Symfony API)
   api:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile.prod
+    image: ghcr.io/larsmun/pricewatch/api:latest
     restart: always
     deploy:
       resources:
@@ -66,11 +64,7 @@ services:
 
   # React Frontend
   frontend:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile.prod
-      args:
-        VITE_API_URL: ${VITE_API_URL:-https://api.shopq.app}
+    image: ghcr.io/larsmun/pricewatch/frontend:latest
     restart: always
     deploy:
       resources:
@@ -94,9 +88,7 @@ services:
 
   # Price check scheduler (cron)
   scheduler:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile.prod
+    image: ghcr.io/larsmun/pricewatch/api:latest
     restart: always
     deploy:
       resources:

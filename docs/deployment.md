@@ -65,6 +65,58 @@
 - DNS A-records naar VPS IP (geen AAAA records!)
 - SSH toegang tot VPS
 
+## CI/CD Pipeline
+
+Docker images worden automatisch gebouwd door GitHub Actions en gepusht naar GitHub Container Registry (GHCR). Dit maakt deployments veel sneller omdat de VPS alleen images hoeft te pullen in plaats van te builden.
+
+| Image | Registry URL | Triggers |
+|-------|--------------|----------|
+| API | `ghcr.io/larsmun/pricewatch/api:latest` | Push naar main |
+| Frontend | `ghcr.io/larsmun/pricewatch/frontend:latest` | Push naar main |
+
+### Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      GitHub Actions                              │
+│                                                                  │
+│   Push to main                                                   │
+│        │                                                         │
+│        ▼                                                         │
+│   ┌─────────────┐    ┌─────────────┐                           │
+│   │ Run Tests   │    │ Lint Code   │                           │
+│   │ (PHPUnit)   │    │ (ESLint)    │                           │
+│   └──────┬──────┘    └──────┬──────┘                           │
+│          │                  │                                    │
+│          ▼                  ▼                                    │
+│   ┌─────────────────────────────────────────┐                   │
+│   │         Build Docker Images              │                   │
+│   │  - API (PHP/Apache/Chromium)            │                   │
+│   │  - Frontend (Node build + nginx)        │                   │
+│   └──────────────────┬──────────────────────┘                   │
+│                      │                                           │
+│                      ▼                                           │
+│   ┌─────────────────────────────────────────┐                   │
+│   │         Push to GHCR                     │                   │
+│   │  ghcr.io/larsmun/pricewatch/api:latest  │                   │
+│   │  ghcr.io/larsmun/pricewatch/frontend    │                   │
+│   └─────────────────────────────────────────┘                   │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      VPS Deployment                              │
+│                                                                  │
+│   ./deploy.sh                                                    │
+│        │                                                         │
+│        ▼                                                         │
+│   docker compose pull  ──►  ~30 seconden (alleen download)      │
+│        │                                                         │
+│        ▼                                                         │
+│   docker compose up -d                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Quick Start (Nieuwe Deployment)
 
 ### 1. VPS Voorbereiden
@@ -156,8 +208,8 @@ mkdir -p backend/config/jwt
 openssl genrsa -out backend/config/jwt/private.pem 4096
 openssl rsa -in backend/config/jwt/private.pem -pubout -out backend/config/jwt/public.pem
 
-# Bouwen en starten
-docker compose -f docker-compose.prod.yml --env-file .env.prod build
+# Pull pre-built images en starten
+docker compose -f docker-compose.prod.yml --env-file .env.prod pull
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
 # Database migraties
@@ -196,19 +248,33 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod \
 
 ### Updates Deployen
 
+De snelste manier is het deployment script gebruiken:
+
+```bash
+ssh shopq
+cd /opt/shopq
+./deploy.sh
+```
+
+Of handmatig:
+
 ```bash
 ssh shopq
 cd /opt/shopq
 git pull origin main
 
-# Rebuild en herstart
-docker compose -f docker-compose.prod.yml --env-file .env.prod build
+# Pull nieuwe images (gebouwd door GitHub Actions)
+docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+
+# Herstart containers
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
 # Migraties (indien nodig)
 docker compose -f docker-compose.prod.yml --env-file .env.prod \
   exec api php bin/console doctrine:migrations:migrate --no-interaction
 ```
+
+> **Tip**: Wacht ~2 minuten na een push naar main voordat je deployed, zodat GitHub Actions de images kan bouwen.
 
 ### Logs Bekijken
 

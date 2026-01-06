@@ -335,6 +335,46 @@ Na een uitgebreide security audit zijn de volgende kritieke en hoge prioriteit i
 #### Documentatie
 - [x] `docs/architectural-review.md` - Volledige security audit rapport (1900+ regels)
 
+### Fase 13: CI/CD Pre-built Images ✅
+
+Deployment tijd gereduceerd van ~5 minuten naar ~30 seconden door Docker images te bouwen in GitHub Actions in plaats van op de VPS.
+
+#### Implementatie
+- [x] GitHub Actions workflow uitgebreid met image build jobs
+- [x] Images worden gepusht naar GitHub Container Registry (GHCR)
+- [x] `docker-compose.prod.yml` gebruikt nu pre-built images
+- [x] `deploy.sh` pull images in plaats van bouwen
+
+#### Container Images
+| Image | Registry URL |
+|-------|--------------|
+| API | `ghcr.io/larsmun/pricewatch/api:latest` |
+| Frontend | `ghcr.io/larsmun/pricewatch/frontend:latest` |
+
+#### Deployment Flow
+```
+Push naar main
+      │
+      ▼
+GitHub Actions
+  ├── Run tests (PHPUnit)
+  ├── Lint frontend (ESLint)
+  ├── Build API image → GHCR
+  └── Build Frontend image → GHCR
+      │
+      ▼
+VPS: ./deploy.sh
+  ├── docker compose pull (~30 sec)
+  ├── docker compose up -d
+  └── Run migrations
+```
+
+#### Gewijzigde Bestanden
+- `.github/workflows/ci.yml` - Image build & push jobs toegevoegd
+- `docker-compose.prod.yml` - `build:` vervangen door `image:`
+- `deploy.sh` - `build` vervangen door `pull`
+- `docs/deployment.md` - CI/CD documentatie toegevoegd
+
 ---
 
 ## Wat Nog Moet Gebeuren
