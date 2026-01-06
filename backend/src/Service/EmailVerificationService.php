@@ -17,8 +17,8 @@ class EmailVerificationService
         private UserRepository $userRepository,
         private LoggerInterface $logger,
         private string $frontendUrl,
-        private string $fromEmail = 'noreply@prijswacht.nl',
-        private string $fromName = 'PrijsWacht',
+        private string $fromEmail = 'noreply@shopq.app',
+        private string $fromName = 'ShopQ',
     ) {}
 
     public function sendVerificationEmail(User $user): void
@@ -62,7 +62,7 @@ class EmailVerificationService
         $email = (new TemplatedEmail())
             ->from("{$this->fromName} <{$this->fromEmail}>")
             ->to($user->getEmail())
-            ->subject('Bevestig je e-mailadres - PrijsWacht')
+            ->subject('Bevestig je e-mailadres - ShopQ')
             ->htmlTemplate('emails/verification.html.twig')
             ->context([
                 'user' => $user,

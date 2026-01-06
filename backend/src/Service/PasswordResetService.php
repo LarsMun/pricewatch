@@ -19,8 +19,8 @@ class PasswordResetService
         private UserPasswordHasherInterface $passwordHasher,
         private LoggerInterface $logger,
         private string $frontendUrl,
-        private string $fromEmail = 'noreply@prijswacht.nl',
-        private string $fromName = 'PrijsWacht',
+        private string $fromEmail = 'noreply@shopq.app',
+        private string $fromName = 'ShopQ',
     ) {}
 
     /**
@@ -83,7 +83,7 @@ class PasswordResetService
         $email = (new TemplatedEmail())
             ->from("{$this->fromName} <{$this->fromEmail}>")
             ->to($user->getEmail())
-            ->subject('Wachtwoord resetten - PrijsWacht')
+            ->subject('Wachtwoord resetten - ShopQ')
             ->htmlTemplate('emails/password_reset.html.twig')
             ->context([
                 'user' => $user,

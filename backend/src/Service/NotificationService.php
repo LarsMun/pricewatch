@@ -17,8 +17,8 @@ class NotificationService
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private WebhookService $webhookService,
-        private string $fromEmail = 'noreply@prijswacht.nl',
-        private string $fromName = 'PrijsWacht',
+        private string $fromEmail = 'noreply@shopq.app',
+        private string $fromName = 'ShopQ',
     ) {}
 
     public function notifyPriceDecrease(ProductWatch $watch, string $oldPrice, string $newPrice): Notification
