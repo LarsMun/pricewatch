@@ -1,6 +1,6 @@
 # ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-05
+> Laatst bijgewerkt: 2026-01-06
 
 ## Huidige Status: LIVE IN PRODUCTIE 🚀
 
@@ -281,6 +281,60 @@ docker exec shopq-php php bin/console app:check-prices --watch=1
 - [x] Environment variables doorgeven aan containers
 - [x] IPv4-only healthchecks (Alpine wget IPv6 issue)
 
+### Fase 12: Security Hardening ✅
+
+Na een uitgebreide security audit zijn de volgende kritieke en hoge prioriteit issues opgelost:
+
+#### Kritieke Fixes (CRIT)
+- [x] **CRIT-01: CORS Configuratie** - Wildcard `*` vervangen door expliciete origin configuratie via `CORS_ALLOW_ORIGIN` env var
+- [x] **CRIT-03: JWT Private Key Permissions** - `chmod 600` toegevoegd aan Dockerfile.prod voor private.pem
+- [x] **CRIT-04: Timing Attack Prevention** - `hash_equals()` geïmplementeerd voor alle token verificaties in `User.php`
+- [x] **CRIT-05: Auth Rate Limiting** - Rate limiters toegevoegd aan alle auth endpoints:
+  - Login: 5 pogingen per minuut
+  - Registratie: 3 per uur
+  - Password reset: 3 per 15 minuten
+  - Resend verification: 3 per 15 minuten
+- [x] **CRIT-06: SSRF DNS Rebinding Protection** - `UrlValidator` herschreven met IP pinning:
+  - DNS resolutie vóór request
+  - Resolved IP wordt gebruikt voor connectie
+  - Original host in Host header voor correcte routing
+
+#### Hoge Prioriteit Fixes (HIGH)
+- [x] **HIGH-01: Admin Self-Demotion Protection** - Admins kunnen eigen admin rol niet verwijderen
+- [x] **HIGH-02: Database Transactions** - `wrapInTransaction()` toegevoegd aan `PriceCheckService`
+- [x] **HIGH-05: Container Resource Limits** - CPU en memory limits in `docker-compose.prod.yml`:
+  - API: 1 CPU, 512MB RAM
+  - Scheduler: 0.5 CPU, 256MB RAM
+  - Frontend: 0.25 CPU, 128MB RAM
+  - Database: 1 CPU, 512MB RAM
+- [x] **HIGH-06: Async Price Checking** - Symfony Messenger geïmplementeerd:
+  - `CheckPriceMessage` en `CheckPriceMessageHandler`
+  - Initiële prijscheck bij nieuwe watch is nu non-blocking
+- [x] **HIGH-07: Backup Script** - `scripts/backup.sh` toegevoegd:
+  - Database dump
+  - JWT keys backup
+  - Environment backup
+  - 30-dagen retention
+  - Compressie
+
+#### Gewijzigde Bestanden
+- `backend/config/packages/nelmio_cors.yaml` - CORS configuratie
+- `backend/config/packages/rate_limiter.yaml` - Auth rate limiters
+- `backend/config/packages/test/rate_limiter.yaml` - Disabled limiters voor tests
+- `backend/src/Entity/User.php` - Timing-safe token verificatie
+- `backend/src/Controller/AuthController.php` - Rate limiter integratie
+- `backend/src/Controller/AdminController.php` - Self-demotion check
+- `backend/src/Service/UrlValidator.php` - DNS rebinding protection
+- `backend/src/Service/PriceCheckService.php` - Transaction wrapping
+- `backend/src/Message/CheckPriceMessage.php` - Nieuw
+- `backend/src/MessageHandler/CheckPriceMessageHandler.php` - Nieuw
+- `docker-compose.prod.yml` - Resource limits
+- `docker/php/Dockerfile.prod` - JWT key permissions
+- `scripts/backup.sh` - Nieuw
+
+#### Documentatie
+- [x] `docs/architectural-review.md` - Volledige security audit rapport (1900+ regels)
+
 ---
 
 ## Wat Nog Moet Gebeuren
@@ -322,9 +376,12 @@ shopq/
 │   │   │   ├── doctrine.yaml
 │   │   │   ├── security.yaml       # ROLE_ADMIN config
 │   │   │   ├── lexik_jwt_authentication.yaml
-│   │   │   ├── rate_limiter.yaml
+│   │   │   ├── rate_limiter.yaml   # Auth + domain rate limiting
+│   │   │   ├── nelmio_cors.yaml    # CORS configuratie
 │   │   │   ├── sentry.yaml         # Error tracking
 │   │   │   └── nelmio_api_doc.yaml # API docs
+│   │   ├── test/
+│   │   │   └── rate_limiter.yaml   # Disabled voor tests
 │   │   └── jwt/
 │   ├── migrations/
 │   ├── tests/                      # PHPUnit tests
@@ -346,6 +403,10 @@ shopq/
 │       │   ├── PriceCheck.php
 │       │   └── Notification.php
 │       ├── Enum/
+│       ├── Message/
+│       │   └── CheckPriceMessage.php   # Async price check
+│       ├── MessageHandler/
+│       │   └── CheckPriceMessageHandler.php
 │       ├── Repository/
 │       ├── Scraper/
 │       │   ├── ScrapeEngineInterface.php
@@ -399,9 +460,12 @@ shopq/
 │       │   └── ContactPage.tsx
 │       └── types/
 │           └── index.ts
+├── scripts/
+│   └── backup.sh                   # Automated backup script
 └── docs/
     ├── technische-documentatie.md
     ├── deployment.md               # Deployment handleiding
+    ├── architectural-review.md     # Security audit rapport
     ├── prijsmonitor-specificatie-v3.md
     ├── prijswacht-entities.md
     ├── setup-voortgang.md
@@ -535,8 +599,8 @@ De API URL wordt geconfigureerd via Vite proxy in `vite.config.ts`.
 **URL**: https://github.com/LarsMun/shopq
 
 ### Recente Commits
+- `ee7940b` - Security hardening: Fix critical vulnerabilities and add HIGH priority improvements
+- `0bae36a` - Update documentation with production deployment info
+- `1e7600c` - Fix production deployment issues
 - `564ed9f` - Add email verification and password reset features
 - `837a1bf` - Add legal compliance, GDPR features, and scraping safeguards
-- `45d9661` - Add URL analyzer wizard, bookmarklet, and image support
-- `7333320` - Update documentation with Phase 1 & 2 progress
-- `c180a03` - Add scraping core (Phase 2)
