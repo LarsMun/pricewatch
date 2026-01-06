@@ -7,6 +7,7 @@ use App\Repository\UserRepository;
 use App\Repository\ProductWatchRepository;
 use App\Repository\PriceCheckRepository;
 use App\Repository\NotificationRepository;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -109,7 +110,7 @@ class AdminController extends AbstractController
             FROM user u
             ORDER BY u.created_at DESC
             LIMIT :limit OFFSET :offset
-        ", ["limit" => $limit, "offset" => $offset], ["limit" => \PDO::PARAM_INT, "offset" => \PDO::PARAM_INT]);
+        ", ["limit" => $limit, "offset" => $offset], ["limit" => ParameterType::INTEGER, "offset" => ParameterType::INTEGER]);
 
         // Convert roles from JSON string
         foreach ($users as &$user) {
@@ -253,7 +254,7 @@ class AdminController extends AbstractController
             JOIN user u ON pw.user_id = u.id
             ORDER BY pc.checked_at DESC
             LIMIT :limit
-        ", ["limit" => $limit], ["limit" => \PDO::PARAM_INT]);
+        ", ["limit" => $limit], ["limit" => ParameterType::INTEGER]);
 
         foreach ($checks as &$check) {
             $check["wasSuccessful"] = (bool) $check["wasSuccessful"];
