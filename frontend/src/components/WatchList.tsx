@@ -323,17 +323,17 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
 
       {/* Info below image */}
       <div className="p-4">
-        {/* View on shop button */}
+        {/* View on shop link */}
         <a
           href={watch.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full mb-3 inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+          className="text-sm text-primary-600 hover:text-primary-700 hover:underline inline-flex items-center gap-1 mb-3"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {watch.domain}
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
-          Bekijk op {watch.domain}
         </a>
 
         {/* Price info */}
