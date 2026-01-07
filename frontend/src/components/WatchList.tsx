@@ -287,7 +287,7 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
         </button>
       </div>
       {/* Title header */}
-      <div className="p-4 pb-3">
+      <div className="p-4 pb-3 pl-12">
         <div className="flex justify-between items-start gap-2">
           <Link
             to={`/watch/${watch.id}`}
