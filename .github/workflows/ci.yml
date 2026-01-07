@@ -207,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-api-image, build-frontend-image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: ShopQ production
+    environment: ShopQ Production
 
     steps:
       - name: Deploy via SSH
