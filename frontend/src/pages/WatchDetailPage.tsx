@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useWatch, useDeleteWatch, useToggleWatch } from '../hooks/useWatches'
+import ConfirmModal from '../components/ConfirmModal'
 
 function formatPrice(price: string | null, currency: string): string {
   if (!price) return '-'
@@ -34,6 +36,7 @@ export default function WatchDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const watchId = parseInt(id || '0', 10)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: watch, isLoading, error } = useWatch(watchId)
   const deleteWatch = useDeleteWatch()
@@ -63,10 +66,8 @@ export default function WatchDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (confirm('Weet je zeker dat je deze watch wilt verwijderen?')) {
-      await deleteWatch.mutateAsync(watch.id)
-      navigate('/dashboard')
-    }
+    await deleteWatch.mutateAsync(watch.id)
+    navigate('/dashboard')
   }
 
   const handleToggle = () => {
@@ -139,7 +140,7 @@ export default function WatchDetailPage() {
                 {watch.isActive ? 'Pauzeren' : 'Hervatten'}
               </button>
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleteWatch.isPending}
                 className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition"
               >
@@ -290,6 +291,17 @@ export default function WatchDetailPage() {
           </p>
         </div>
       </main>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Watch verwijderen"
+        message={`Weet je zeker dat je "${watch.productName || watch.domain}" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`}
+        confirmLabel="Verwijderen"
+        cancelLabel="Annuleren"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }

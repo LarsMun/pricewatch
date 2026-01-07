@@ -13,6 +13,10 @@ export default function ResetPasswordPage() {
 
   const token = searchParams.get('token')
 
+  // Validation helpers
+  const isPasswordLongEnough = password.length >= 8
+  const doPasswordsMatch = password === confirmPassword && confirmPassword !== ''
+
   useEffect(() => {
     if (tokenChecked.current) return
     tokenChecked.current = true
@@ -117,9 +121,32 @@ export default function ResetPasswordPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              autoComplete="new-password"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                password
+                  ? isPasswordLongEnough
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`}
               required
             />
+            <div className="mt-1 flex items-center gap-1">
+              <svg
+                className={`w-4 h-4 ${password ? (isPasswordLongEnough ? 'text-green-500' : 'text-gray-400') : 'text-gray-300'}`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                {isPasswordLongEnough ? (
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                ) : (
+                  <circle cx="10" cy="10" r="5" />
+                )}
+              </svg>
+              <span className={`text-sm ${password ? (isPasswordLongEnough ? 'text-green-600' : 'text-gray-500') : 'text-gray-400'}`}>
+                Minimaal 8 karakters
+              </span>
+            </div>
           </div>
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,9 +157,27 @@ export default function ResetPasswordPage() {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              autoComplete="new-password"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                confirmPassword
+                  ? doPasswordsMatch
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`}
               required
             />
+            {confirmPassword && !doPasswordsMatch && (
+              <p className="mt-1 text-sm text-red-600">Wachtwoorden komen niet overeen</p>
+            )}
+            {doPasswordsMatch && (
+              <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Wachtwoorden komen overeen
+              </p>
+            )}
           </div>
           <button
             type="submit"

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCollections, useDeleteCollection, useUpdateCollection } from '../hooks/useCollections'
+import ConfirmModal from './ConfirmModal'
 import type { Collection } from '../types'
 
 interface CollectionTabsProps {
@@ -18,8 +19,11 @@ export default function CollectionTabs({
   const { data: collections, isLoading } = useCollections()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const updateCollection = useUpdateCollection()
   const deleteCollection = useDeleteCollection()
+
+  const collectionToDelete = collections?.find(c => c.id === deleteConfirmId)
 
   const handleStartEdit = (collection: Collection) => {
     setEditingId(collection.id)
@@ -35,13 +39,14 @@ export default function CollectionTabs({
     }
   }
 
-  const handleDelete = (id: number) => {
-    if (confirm('Weet je zeker dat je deze collectie wilt verwijderen? De watches blijven bestaan.')) {
-      deleteCollection.mutate(id, {
+  const handleConfirmDelete = () => {
+    if (deleteConfirmId) {
+      deleteCollection.mutate(deleteConfirmId, {
         onSuccess: () => {
-          if (selectedCollection === id) {
+          if (selectedCollection === deleteConfirmId) {
             onSelectCollection(null)
           }
+          setDeleteConfirmId(null)
         }
       })
     }
@@ -147,7 +152,7 @@ export default function CollectionTabs({
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDelete(collection.id)
+                        setDeleteConfirmId(collection.id)
                       }}
                       className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                     >
@@ -171,6 +176,17 @@ export default function CollectionTabs({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
       </button>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Collectie verwijderen"
+        message={`Weet je zeker dat je "${collectionToDelete?.name}" wilt verwijderen? De watches in deze collectie blijven bestaan.`}
+        confirmLabel="Verwijderen"
+        cancelLabel="Annuleren"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   )
 }

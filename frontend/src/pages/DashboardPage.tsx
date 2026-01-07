@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCheckAllWatches, useWatches } from '../hooks/useWatches'
@@ -28,6 +28,16 @@ export default function DashboardPage() {
   const handleCheckAll = () => {
     checkAll.mutate()
   }
+
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (checkAll.isSuccess) {
+      const timer = setTimeout(() => {
+        checkAll.reset()
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [checkAll.isSuccess])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -171,12 +181,23 @@ export default function DashboardPage() {
         </div>
 
         {checkAll.isSuccess && checkAll.data && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2 text-green-700 font-medium">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Alle watches gecheckt: {checkAll.data.success} succesvol, {checkAll.data.failed} mislukt
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg animate-fade-in-down">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-green-700 font-medium">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Alle watches gecheckt: {checkAll.data.success} succesvol, {checkAll.data.failed} mislukt
+              </div>
+              <button
+                onClick={() => checkAll.reset()}
+                className="text-green-600 hover:text-green-800 p-1"
+                title="Sluiten"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
@@ -189,6 +210,7 @@ export default function DashboardPage() {
 
         <WatchList
           selectedCollectionId={selectedCollectionId}
+          onAddWatch={() => setIsAddModalOpen(true)}
         />
       </main>
 

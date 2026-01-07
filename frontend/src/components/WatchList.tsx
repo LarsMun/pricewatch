@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWatches, useDeleteWatch, useToggleWatch } from '../hooks/useWatches'
 import { useCollections, useAddWatchToCollection, useRemoveWatchFromCollection } from '../hooks/useCollections'
+import ConfirmModal from './ConfirmModal'
 import type { ProductWatch, Collection } from '../types'
 
 // Floating action bar for bulk operations
@@ -237,11 +238,11 @@ interface WatchCardProps {
 function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelection }: WatchCardProps) {
   const deleteWatch = useDeleteWatch()
   const toggleWatch = useToggleWatch()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleDelete = () => {
-    if (confirm('Weet je zeker dat je deze watch wilt verwijderen?')) {
-      deleteWatch.mutate(watch.id)
-    }
+    deleteWatch.mutate(watch.id)
+    setShowDeleteConfirm(false)
   }
 
   const handleToggle = () => {
@@ -371,7 +372,7 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
               {watch.isActive ? 'Pauze' : 'Hervat'}
             </button>
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               disabled={deleteWatch.isPending}
               className="px-2 py-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition"
             >
@@ -380,15 +381,91 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Watch verwijderen"
+        message={`Weet je zeker dat je "${watch.productName || watch.domain}" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`}
+        confirmLabel="Verwijderen"
+        cancelLabel="Annuleren"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+    </div>
+  )
+}
+
+interface EmptyStateProps {
+  onAddWatch?: () => void
+}
+
+function EmptyState({ onAddWatch }: EmptyStateProps) {
+  return (
+    <div className="text-center py-12 px-4">
+      {/* Illustration */}
+      <div className="mb-6">
+        <svg className="mx-auto w-32 h-32 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 100 100">
+          <rect x="15" y="20" width="70" height="55" rx="4" strokeWidth="2" className="text-primary-300" />
+          <circle cx="50" cy="42" r="12" strokeWidth="2" className="text-primary-400" />
+          <path d="M50 38v8M46 42h8" strokeWidth="2" strokeLinecap="round" className="text-primary-500" />
+          <path d="M25 58h50" strokeWidth="2" strokeLinecap="round" className="text-primary-300" />
+          <path d="M25 64h30" strokeWidth="2" strokeLinecap="round" className="text-primary-200" />
+          <path d="M72 12l6 8-6 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400" />
+          <path d="M22 12l-6 8 6 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400" />
+        </svg>
+      </div>
+
+      {/* Heading */}
+      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        Begin met prijzen volgen
+      </h3>
+
+      {/* Description */}
+      <p className="text-gray-600 max-w-md mx-auto mb-6">
+        Voeg producten toe die je wilt volgen. ShopQ controleert automatisch de prijs
+        en stuurt je een melding zodra de prijs daalt.
+      </p>
+
+      {/* Primary CTA */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+        <button
+          onClick={onAddWatch}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Eerste product toevoegen
+        </button>
+
+        <span className="text-gray-400">of</span>
+
+        <Link
+          to="/bookmarklet"
+          className="inline-flex items-center gap-2 px-4 py-2 text-primary-600 hover:text-primary-700 font-medium"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          Gebruik de bookmarklet
+        </Link>
+      </div>
+
+      {/* Tip */}
+      <p className="mt-8 text-sm text-gray-500">
+        💡 Tip: Met de bookmarklet voeg je producten toe met één klik vanuit elke webshop.
+      </p>
     </div>
   )
 }
 
 interface WatchListProps {
   selectedCollectionId?: number | null
+  onAddWatch?: () => void
 }
 
-export default function WatchList({ selectedCollectionId }: WatchListProps) {
+export default function WatchList({ selectedCollectionId, onAddWatch }: WatchListProps) {
   const { data: watches, isLoading: watchesLoading, error: watchesError } = useWatches()
   const { data: collections, isLoading: collectionsLoading } = useCollections()
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -429,11 +506,7 @@ export default function WatchList({ selectedCollectionId }: WatchListProps) {
   }
 
   if (!watches || watches.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        Je hebt nog geen prijswatches.
-      </div>
-    )
+    return <EmptyState onAddWatch={onAddWatch} />
   }
 
   // Filter watches by selected collection using collectionIds from the watch

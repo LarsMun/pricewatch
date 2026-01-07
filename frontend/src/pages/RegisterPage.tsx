@@ -10,8 +10,14 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isRegistered, setIsRegistered] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const { register } = useAuth()
   const navigate = useNavigate()
+
+  // Validation helpers
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const isPasswordLongEnough = password.length >= 8
+  const doPasswordsMatch = password === confirmPassword && confirmPassword !== ''
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,10 +94,20 @@ export default function RegisterPage() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, email: true }))}
               autoComplete="email"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                touched.email && email
+                  ? isEmailValid
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`}
               required
             />
+            {touched.email && email && !isEmailValid && (
+              <p className="mt-1 text-sm text-red-600">Vul een geldig e-mailadres in</p>
+            )}
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -102,10 +118,33 @@ export default function RegisterPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, password: true }))}
               autoComplete="new-password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                touched.password && password
+                  ? isPasswordLongEnough
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`}
               required
             />
+            <div className="mt-1 flex items-center gap-1">
+              <svg
+                className={`w-4 h-4 ${password ? (isPasswordLongEnough ? 'text-green-500' : 'text-gray-400') : 'text-gray-300'}`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                {isPasswordLongEnough ? (
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                ) : (
+                  <circle cx="10" cy="10" r="5" />
+                )}
+              </svg>
+              <span className={`text-sm ${password ? (isPasswordLongEnough ? 'text-green-600' : 'text-gray-500') : 'text-gray-400'}`}>
+                Minimaal 8 karakters
+              </span>
+            </div>
           </div>
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
@@ -116,10 +155,28 @@ export default function RegisterPage() {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, confirmPassword: true }))}
               autoComplete="new-password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                confirmPassword
+                  ? doPasswordsMatch
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
+              }`}
               required
             />
+            {confirmPassword && !doPasswordsMatch && (
+              <p className="mt-1 text-sm text-red-600">Wachtwoorden komen niet overeen</p>
+            )}
+            {doPasswordsMatch && (
+              <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Wachtwoorden komen overeen
+              </p>
+            )}
           </div>
           <div className="flex items-start gap-3">
             <input
