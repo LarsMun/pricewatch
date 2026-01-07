@@ -406,6 +406,7 @@ Gebruikers kunnen nu hun watches groeperen in collecties (bijv. "Dressoirs", "Wo
 - Tab navigatie bovenaan dashboard met watch counts
 - Hover menu op tabs voor bewerken/verwijderen
 - Verwijderen collectie verwijdert NIET de watches
+- **Drag & drop**: sleep watches naar collectie tabs om toe te voegen
 
 #### Nieuwe Bestanden
 - `backend/src/Entity/Collection.php`
