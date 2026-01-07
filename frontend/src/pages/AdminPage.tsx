@@ -10,7 +10,7 @@ function StatCard({ label, value, subValue }: { label: string; value: number | s
     <div className="bg-white rounded-lg shadow p-4">
       <div className="text-sm text-gray-500">{label}</div>
       <div className="text-2xl font-bold text-gray-900">{value}</div>
-      {subValue && <div className="text-sm text-gray-400">{subValue}</div>}
+      {subValue && <div className="text-sm text-gray-500">{subValue}</div>}
     </div>
   )
 }

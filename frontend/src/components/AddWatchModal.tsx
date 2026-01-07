@@ -303,7 +303,7 @@ export default function AddWatchModal({ isOpen, onClose }: AddWatchModalProps) {
                           } ${sel.recommended ? 'ring-1 ring-green-400' : ''}`}
                         >
                           <span className="font-mono">{sel.selector}</span>
-                          <span className="ml-1 text-gray-400">({formatPrice(sel.price, currency)})</span>
+                          <span className="ml-1 text-gray-500">({formatPrice(sel.price, currency)})</span>
                           {sel.recommended && <span className="ml-1 text-green-600">✓</span>}
                         </button>
                       ))}

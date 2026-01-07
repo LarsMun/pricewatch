@@ -90,7 +90,7 @@ export default function CreateCollectionModal({ isOpen, onClose }: CreateCollect
 
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Beschrijving <span className="text-gray-400">(optioneel)</span>
+              Beschrijving <span className="text-gray-500">(optioneel)</span>
             </label>
             <textarea
               id="description"

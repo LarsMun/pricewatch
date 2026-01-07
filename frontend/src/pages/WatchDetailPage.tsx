@@ -96,11 +96,12 @@ export default function WatchDetailPage() {
                   src={watch.imageUrl || '/placeholder.svg'}
                   alt={watch.productName || 'Product'}
                   className="w-24 h-24 object-cover rounded-lg bg-gray-100"
+                  loading="lazy"
                   onError={(e) => {
                     e.currentTarget.src = '/placeholder.svg'
                   }}
                 />
-                <span className="text-xs text-gray-400 block mt-1 text-center">
+                <span className="text-xs text-gray-500 block mt-1 text-center">
                   via {watch.domain}
                 </span>
               </div>
@@ -178,7 +179,7 @@ export default function WatchDetailPage() {
                   )}
                 </span>
               ) : (
-                <span className="text-gray-400 text-xl">-</span>
+                <span className="text-gray-500 text-xl">-</span>
               )}
             </div>
             <div>

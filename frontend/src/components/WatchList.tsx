@@ -89,7 +89,7 @@ function SelectionBar({ selectedIds, watches, collections, onClear }: SelectionB
                       className="w-full px-4 py-2 text-left text-gray-900 hover:bg-gray-50 text-sm flex items-center justify-between disabled:opacity-50"
                     >
                       <span>{collection.name}</span>
-                      <span className="text-gray-400 text-xs">{collection.watchCount}</span>
+                      <span className="text-gray-500 text-xs">{collection.watchCount}</span>
                     </button>
                   ))
                 )}
@@ -312,6 +312,7 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
           src={watch.imageUrl || '/placeholder.svg'}
           alt={watch.productName || 'Product'}
           className="w-full h-48 object-cover bg-gray-100"
+          loading="lazy"
           onError={(e) => {
             e.currentTarget.src = '/placeholder.svg'
           }}
@@ -359,7 +360,7 @@ function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelectio
         )}
 
         {/* Meta info */}
-        <div className="flex justify-between items-center text-xs text-gray-400 border-t pt-3">
+        <div className="flex justify-between items-center text-xs text-gray-500 border-t pt-3">
           <span>Gecheckt: {formatDate(watch.lastCheckedAt)}</span>
           <div className="flex gap-1">
             <button
