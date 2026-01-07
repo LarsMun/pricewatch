@@ -416,11 +416,22 @@ Gebruikers kunnen nu hun watches groeperen in collecties (bijv. "Dressoirs", "Wo
 - `frontend/src/components/CollectionTabs.tsx`
 - `frontend/src/components/CreateCollectionModal.tsx`
 
+#### Optimalisatie: collectionIds in watch response
+- Bidirectionele ManyToMany relatie tussen ProductWatch en Collection
+- `collectionIds` array direct in watch API response
+- Frontend haalt collection IDs direct uit watch object (geen prop drilling)
+- Vereenvoudigde filtering logica in WatchList (-22 regels)
+- Automatische cache invalidatie bij collection wijzigingen
+
 #### Gewijzigde Bestanden
 - `backend/src/Entity/User.php` - OneToMany naar Collection
-- `frontend/src/types/index.ts` - Collection types
-- `frontend/src/pages/DashboardPage.tsx` - CollectionTabs integratie
-- `frontend/src/components/WatchList.tsx` - CollectionDropdown + filtering
+- `backend/src/Entity/ProductWatch.php` - Collections relatie + getCollectionIds()
+- `backend/src/Entity/Collection.php` - inversedBy voor bidirectionele relatie
+- `backend/src/Controller/ProductWatchController.php` - collectionIds in response
+- `frontend/src/types/index.ts` - Collection types + collectionIds op ProductWatch
+- `frontend/src/pages/DashboardPage.tsx` - CollectionTabs integratie (vereenvoudigd)
+- `frontend/src/components/WatchList.tsx` - CollectionDropdown + filtering (vereenvoudigd)
+- `frontend/src/hooks/useCollections.ts` - watches query invalidatie
 
 ---
 
