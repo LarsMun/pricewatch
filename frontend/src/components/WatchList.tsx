@@ -4,6 +4,115 @@ import { useWatches, useDeleteWatch, useToggleWatch } from '../hooks/useWatches'
 import { useCollections, useAddWatchToCollection, useRemoveWatchFromCollection } from '../hooks/useCollections'
 import type { ProductWatch, Collection } from '../types'
 
+// Floating action bar for bulk operations
+interface SelectionBarProps {
+  selectedIds: Set<number>
+  watches: ProductWatch[]
+  collections: Collection[]
+  onClear: () => void
+}
+
+function SelectionBar({ selectedIds, watches, collections, onClear }: SelectionBarProps) {
+  const [showCollections, setShowCollections] = useState(false)
+  const addToCollection = useAddWatchToCollection()
+
+  const selectedWatches = watches.filter(w => selectedIds.has(w.id))
+  const count = selectedIds.size
+
+  const handleAddToCollection = (collectionId: number) => {
+    selectedIds.forEach(watchId => {
+      addToCollection.mutate({ collectionId, watchId })
+    })
+    setShowCollections(false)
+    onClear()
+  }
+
+  if (count === 0) return null
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+      <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-4">
+        {/* Selected count with mini avatars */}
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {selectedWatches.slice(0, 3).map((watch, i) => (
+              <img
+                key={watch.id}
+                src={watch.imageUrl || '/placeholder.svg'}
+                alt=""
+                className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover bg-gray-700"
+                style={{ zIndex: 3 - i }}
+                onError={(e) => { e.currentTarget.src = '/placeholder.svg' }}
+              />
+            ))}
+            {count > 3 && (
+              <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium">
+                +{count - 3}
+              </div>
+            )}
+          </div>
+          <span className="text-sm font-medium">
+            {count} {count === 1 ? 'item' : 'items'}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-gray-700" />
+
+        {/* Add to collection button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowCollections(!showCollections)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 rounded-xl transition font-medium text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Collectie
+          </button>
+
+          {/* Collection dropdown */}
+          {showCollections && (
+            <>
+              <div className="fixed inset-0" onClick={() => setShowCollections(false)} />
+              <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border py-2 min-w-[200px] max-h-64 overflow-y-auto">
+                {collections.length === 0 ? (
+                  <div className="px-4 py-3 text-gray-500 text-sm">
+                    Geen collecties gevonden
+                  </div>
+                ) : (
+                  collections.map(collection => (
+                    <button
+                      key={collection.id}
+                      onClick={() => handleAddToCollection(collection.id)}
+                      disabled={addToCollection.isPending}
+                      className="w-full px-4 py-2 text-left text-gray-900 hover:bg-gray-50 text-sm flex items-center justify-between disabled:opacity-50"
+                    >
+                      <span>{collection.name}</span>
+                      <span className="text-gray-400 text-xs">{collection.watchCount}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Clear selection button */}
+        <button
+          onClick={onClear}
+          className="p-2 hover:bg-gray-800 rounded-lg transition"
+          title="Selectie wissen"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function formatPrice(price: string | null, currency: string): string {
   if (!price) return '-'
   const num = parseFloat(price)
@@ -120,9 +229,12 @@ function CollectionDropdown({ watch, collections, watchCollectionIds }: Collecti
 interface WatchCardProps {
   watch: ProductWatch
   collections: Collection[]
+  isSelected: boolean
+  onToggleSelect: (id: number) => void
+  hasSelection: boolean
 }
 
-function WatchCard({ watch, collections }: WatchCardProps) {
+function WatchCard({ watch, collections, isSelected, onToggleSelect, hasSelection }: WatchCardProps) {
   const deleteWatch = useDeleteWatch()
   const toggleWatch = useToggleWatch()
 
@@ -136,11 +248,6 @@ function WatchCard({ watch, collections }: WatchCardProps) {
     toggleWatch.mutate({ id: watch.id, isActive: !watch.isActive })
   }
 
-  const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('watchId', watch.id.toString())
-    e.dataTransfer.effectAllowed = 'copy'
-  }
-
   const priceChange = watch.currentPrice && watch.originalPrice
     ? parseFloat(watch.currentPrice) - parseFloat(watch.originalPrice)
     : null
@@ -151,10 +258,34 @@ function WatchCard({ watch, collections }: WatchCardProps) {
 
   return (
     <div
-      className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition cursor-grab active:cursor-grabbing"
-      draggable
-      onDragStart={handleDragStart}
+      className={`bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition relative group ${
+        isSelected ? 'ring-2 ring-primary-500 ring-offset-2' : ''
+      }`}
     >
+      {/* Selection checkbox - visible on hover or when there's any selection */}
+      <div
+        className={`absolute top-3 left-3 z-10 transition-opacity ${
+          hasSelection || isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            onToggleSelect(watch.id)
+          }}
+          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${
+            isSelected
+              ? 'bg-primary-600 border-primary-600 text-white'
+              : 'bg-white/90 border-gray-300 hover:border-primary-400'
+          }`}
+        >
+          {isSelected && (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+      </div>
       {/* Title header */}
       <div className="p-4 pb-3">
         <div className="flex justify-between items-start gap-2">
@@ -259,9 +390,26 @@ interface WatchListProps {
 export default function WatchList({ selectedCollectionId }: WatchListProps) {
   const { data: watches, isLoading: watchesLoading, error: watchesError } = useWatches()
   const { data: collections, isLoading: collectionsLoading } = useCollections()
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
   const isLoading = watchesLoading || collectionsLoading
   const error = watchesError
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set())
+  }
 
   if (isLoading) {
     return (
@@ -301,15 +449,29 @@ export default function WatchList({ selectedCollectionId }: WatchListProps) {
     )
   }
 
+  const hasSelection = selectedIds.size > 0
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {filteredWatches.map((watch) => (
-        <WatchCard
-          key={watch.id}
-          watch={watch}
-          collections={collections || []}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        {filteredWatches.map((watch) => (
+          <WatchCard
+            key={watch.id}
+            watch={watch}
+            collections={collections || []}
+            isSelected={selectedIds.has(watch.id)}
+            onToggleSelect={handleToggleSelect}
+            hasSelection={hasSelection}
+          />
+        ))}
+      </div>
+
+      <SelectionBar
+        selectedIds={selectedIds}
+        watches={watches || []}
+        collections={collections || []}
+        onClear={handleClearSelection}
+      />
+    </>
   )
 }
