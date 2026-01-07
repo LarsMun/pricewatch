@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 3.0
-**Datum:** 5 Januari 2026
-**Status:** Production Ready (Fase 1-10)
+**Versie:** 3.1
+**Datum:** 7 Januari 2026
+**Status:** Production Ready (Fase 1-14)
 
 ---
 
@@ -174,6 +174,35 @@ type: enum('price_decrease', 'price_increase', 'site_broken')
 sentAt: DateTimeImmutable
 ```
 
+#### Collection
+Gebruikers-gedefinieerde collecties voor het groeperen van watches.
+
+```php
+// Identificatie
+id: int (PK)
+user: User (FK, CASCADE DELETE)
+name: string (255 chars, NOT NULL)
+description: ?string (1024 chars)
+
+// Metadata
+createdAt: DateTimeImmutable
+updatedAt: ?DateTimeImmutable
+
+// Relaties
+productWatches: ManyToMany → ProductWatch (via collection_product_watch join table)
+
+// Methoden
+addProductWatch(ProductWatch $watch): void
+removeProductWatch(ProductWatch $watch): void
+getWatchCount(): int
+```
+
+**Kenmerken:**
+- Een watch kan in meerdere collecties zitten (many-to-many)
+- Collecties zijn per gebruiker (user owns collection)
+- Verwijderen van collectie verwijdert NIET de watches
+- Watches blijven behouden als ze uit een collectie worden verwijderd
+
 ---
 
 ### API Endpoints
@@ -227,6 +256,51 @@ sentAt: DateTimeImmutable
 | Method | Endpoint | Beschrijving |
 |--------|----------|--------------|
 | GET | `/api/health` | Health check (database + timestamp) |
+
+#### Collections (`CollectionController`)
+
+| Method | Endpoint | Beschrijving |
+|--------|----------|--------------|
+| GET | `/api/collections` | Lijst collecties van gebruiker |
+| POST | `/api/collections` | Nieuwe collectie aanmaken |
+| GET | `/api/collections/{id}` | Collectie details + watches |
+| PATCH | `/api/collections/{id}` | Collectie updaten (naam/beschrijving) |
+| DELETE | `/api/collections/{id}` | Collectie verwijderen |
+| POST | `/api/collections/{id}/watches/{watchId}` | Watch toevoegen aan collectie |
+| DELETE | `/api/collections/{id}/watches/{watchId}` | Watch verwijderen uit collectie |
+
+**Response formaten:**
+
+```json
+// GET /api/collections
+{
+  "collections": [
+    {
+      "id": 1,
+      "name": "Dressoirs",
+      "description": "Alle dressoirs die ik volg",
+      "watchCount": 4,
+      "createdAt": "2026-01-07T00:00:00+01:00",
+      "updatedAt": null
+    }
+  ]
+}
+
+// GET /api/collections/{id}
+{
+  "collection": {
+    "id": 1,
+    "name": "Dressoirs",
+    "description": "...",
+    "watchCount": 4,
+    "watches": [
+      { "id": 1, "productName": "...", ... }
+    ],
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
 
 ---
 
@@ -486,19 +560,53 @@ Gele waarschuwingsbanner voor onverifieerde gebruikers:
 
 Wordt getoond bovenaan DashboardPage.
 
+#### CollectionTabs
+Tab navigatie voor collectie filtering:
+- "Alle" tab toont totaal aantal watches
+- Per collectie een tab met naam en watch count
+- Actieve tab is gemarkeerd met primary color
+- Hover menu voor bewerken/verwijderen
+- "+" knop voor nieuwe collectie
+- Inline editing van collectie naam
+
+#### CreateCollectionModal
+Modal voor nieuwe collectie aanmaken:
+- Naam (verplicht)
+- Beschrijving (optioneel)
+- Validatie en error handling
+- Sluit automatisch na succes
+
+#### CollectionDropdown (in WatchCard)
+Dropdown om watch aan collecties toe te voegen:
+- Toont alle collecties van gebruiker
+- Checkmark bij collecties waar watch al in zit
+- Click toggled lidmaatschap
+- Loading state tijdens mutatie
+
 ### Hooks (React Query)
 
 ```typescript
-// Queries
+// Watches Queries
 useWatches()           // Alle watches
 useWatch(id)           // Enkele watch + historie
 useAnalyzeUrl()        // URL analyseren
 
-// Mutations
+// Watches Mutations
 useCreateWatch()       // Watch aanmaken
 useDeleteWatch()       // Watch verwijderen
 useToggleWatch()       // Pauze/hervat
 useCheckAllWatches()   // Alles checken
+
+// Collections Queries
+useCollections()       // Alle collecties van gebruiker
+useCollection(id)      // Collectie met watches
+
+// Collections Mutations
+useCreateCollection()          // Collectie aanmaken
+useUpdateCollection()          // Collectie updaten
+useDeleteCollection()          // Collectie verwijderen
+useAddWatchToCollection()      // Watch aan collectie toevoegen
+useRemoveWatchFromCollection() // Watch uit collectie verwijderen
 ```
 
 ### Auth Context
@@ -612,6 +720,27 @@ CREATE TABLE notification (
     sent_at DATETIME NOT NULL,
     FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE
 );
+
+-- Collecties
+CREATE TABLE collection (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1024),
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    INDEX idx_collection_user (user_id)
+);
+
+-- Collectie-Watch koppeltabel (many-to-many)
+CREATE TABLE collection_product_watch (
+    collection_id INT NOT NULL,
+    product_watch_id INT NOT NULL,
+    PRIMARY KEY (collection_id, product_watch_id),
+    FOREIGN KEY (collection_id) REFERENCES collection(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE
+);
 ```
 
 ---
@@ -662,6 +791,13 @@ CREATE TABLE notification (
 - [x] Responsieve UI (Tailwind CSS)
 - [x] Footer met juridische links
 - [x] Affiliate disclaimer ("Bekijk op [domein]")
+
+#### Collecties
+- [x] Collectie CRUD operaties
+- [x] Many-to-many relatie (watch kan in meerdere collecties)
+- [x] Tab navigatie op dashboard
+- [x] Inline collectie bewerking
+- [x] Watch aan/uit collectie via dropdown op WatchCard
 
 #### Webhook Notificaties
 - [x] Discord webhooks met rich embeds

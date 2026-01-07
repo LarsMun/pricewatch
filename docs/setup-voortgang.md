@@ -1,6 +1,6 @@
 # ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-06
+> Laatst bijgewerkt: 2026-01-07
 
 ## Huidige Status: LIVE IN PRODUCTIE 🚀
 
@@ -375,6 +375,53 @@ VPS: ./deploy.sh
 - `deploy.sh` - `build` vervangen door `pull`
 - `docs/deployment.md` - CI/CD documentatie toegevoegd
 
+### Fase 14: Collecties Feature ✅
+
+Gebruikers kunnen nu hun watches groeperen in collecties (bijv. "Dressoirs", "Woonkamer").
+
+#### Backend Implementatie
+- [x] `Collection` entity met ManyToMany relatie naar ProductWatch
+- [x] `CollectionRepository` met user-specifieke queries
+- [x] `CollectionController` met 7 API endpoints:
+  - `GET /api/collections` - Lijst collecties
+  - `POST /api/collections` - Nieuwe collectie
+  - `GET /api/collections/{id}` - Details + watches
+  - `PATCH /api/collections/{id}` - Update naam/beschrijving
+  - `DELETE /api/collections/{id}` - Verwijder collectie
+  - `POST /api/collections/{id}/watches/{watchId}` - Watch toevoegen
+  - `DELETE /api/collections/{id}/watches/{watchId}` - Watch verwijderen
+- [x] Database migratie voor `collection` en `collection_product_watch` tabellen
+
+#### Frontend Implementatie
+- [x] TypeScript types (`Collection`, `CollectionWithWatches`)
+- [x] React Query hooks (`useCollections`, `useCollection`, `useCreateCollection`, etc.)
+- [x] `CollectionTabs` component - Tab navigatie met inline editing
+- [x] `CreateCollectionModal` - Modal voor nieuwe collectie
+- [x] `CollectionDropdown` in WatchCard - Watch aan collectie toevoegen
+- [x] Dashboard integratie met collectie filtering
+
+#### Kenmerken
+- Many-to-many relatie: een watch kan in meerdere collecties zitten
+- Collecties hebben naam + optionele beschrijving
+- Tab navigatie bovenaan dashboard met watch counts
+- Hover menu op tabs voor bewerken/verwijderen
+- Verwijderen collectie verwijdert NIET de watches
+
+#### Nieuwe Bestanden
+- `backend/src/Entity/Collection.php`
+- `backend/src/Repository/CollectionRepository.php`
+- `backend/src/Controller/CollectionController.php`
+- `backend/migrations/Version20260106233311.php`
+- `frontend/src/hooks/useCollections.ts`
+- `frontend/src/components/CollectionTabs.tsx`
+- `frontend/src/components/CreateCollectionModal.tsx`
+
+#### Gewijzigde Bestanden
+- `backend/src/Entity/User.php` - OneToMany naar Collection
+- `frontend/src/types/index.ts` - Collection types
+- `frontend/src/pages/DashboardPage.tsx` - CollectionTabs integratie
+- `frontend/src/components/WatchList.tsx` - CollectionDropdown + filtering
+
 ---
 
 ## Wat Nog Moet Gebeuren
@@ -435,13 +482,15 @@ shopq/
 │       │   ├── AuthController.php
 │       │   ├── ProductWatchController.php
 │       │   ├── BookmarkletController.php
+│       │   ├── CollectionController.php  # Collecties API
 │       │   ├── AdminController.php   # Admin dashboard API
 │       │   └── HealthController.php  # Health check endpoint
 │       ├── Entity/
-│       │   ├── User.php              # +webhook fields
+│       │   ├── User.php              # +webhook fields, +collections
 │       │   ├── ProductWatch.php
 │       │   ├── PriceCheck.php
-│       │   └── Notification.php
+│       │   ├── Notification.php
+│       │   └── Collection.php        # Collecties feature
 │       ├── Enum/
 │       ├── Message/
 │       │   └── CheckPriceMessage.php   # Async price check
@@ -474,14 +523,17 @@ shopq/
 │       │   └── client.ts
 │       ├── components/
 │       │   ├── ProtectedRoute.tsx
-│       │   ├── WatchList.tsx
+│       │   ├── WatchList.tsx         # +CollectionDropdown
 │       │   ├── AddWatchModal.tsx
 │       │   ├── VerificationBanner.tsx
+│       │   ├── CollectionTabs.tsx    # Collectie tab navigatie
+│       │   ├── CreateCollectionModal.tsx
 │       │   └── Footer.tsx
 │       ├── contexts/
 │       │   └── AuthContext.tsx
 │       ├── hooks/
-│       │   └── useWatches.ts
+│       │   ├── useWatches.ts
+│       │   └── useCollections.ts     # Collectie hooks
 │       ├── pages/
 │       │   ├── HomePage.tsx
 │       │   ├── LoginPage.tsx
