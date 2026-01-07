@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '../api/client'
+import { api, TOKEN_EXPIRED_EVENT } from '../api/client'
 import type { User } from '../types'
 
 interface AuthContextType {
@@ -82,12 +82,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(email, password)
   }
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)
     queryClient.clear()
-  }
+  }, [queryClient])
+
+  // Listen for token expiration events from API client
+  useEffect(() => {
+    function handleTokenExpired() {
+      logout()
+    }
+
+    window.addEventListener(TOKEN_EXPIRED_EVENT, handleTokenExpired)
+    return () => window.removeEventListener(TOKEN_EXPIRED_EVENT, handleTokenExpired)
+  }, [logout])
 
   async function refreshUser() {
     if (token) {

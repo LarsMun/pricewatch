@@ -1,5 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8100'
 
+// Custom event for token expiration
+export const TOKEN_EXPIRED_EVENT = 'auth:token-expired'
+
 interface FetchOptions extends RequestInit {
   token?: string
 }
@@ -21,7 +24,13 @@ async function request<T>(endpoint: string, options: FetchOptions = {}): Promise
   })
 
   if (!response.ok) {
-    const error = await response.json()
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401 && token) {
+      window.dispatchEvent(new CustomEvent(TOKEN_EXPIRED_EVENT))
+      throw new Error('Sessie verlopen. Je wordt uitgelogd.')
+    }
+
+    const error = await response.json().catch(() => ({}))
     // Handle different error formats from backend
     const message = error.message || error.error ||
       (error.errors ? Object.values(error.errors).join(', ') : 'Er is een fout opgetreden')
