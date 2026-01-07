@@ -102,6 +102,7 @@ export function useAddWatchToCollection() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
       queryClient.invalidateQueries({ queryKey: ['collections', variables.collectionId] })
+      queryClient.invalidateQueries({ queryKey: ['watches'] })
     },
   })
 }
@@ -121,6 +122,7 @@ export function useRemoveWatchFromCollection() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
       queryClient.invalidateQueries({ queryKey: ['collections', variables.collectionId] })
+      queryClient.invalidateQueries({ queryKey: ['watches'] })
     },
   })
 }

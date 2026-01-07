@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCheckAllWatches, useWatches } from '../hooks/useWatches'
-import { useCollections, useCollection } from '../hooks/useCollections'
+import { useCollections } from '../hooks/useCollections'
 import WatchList from '../components/WatchList'
 import AddWatchModal from '../components/AddWatchModal'
 import VerificationBanner from '../components/VerificationBanner'
@@ -18,22 +18,6 @@ export default function DashboardPage() {
   const checkAll = useCheckAllWatches()
   const { data: watches } = useWatches()
   const { data: collections } = useCollections()
-  const { data: selectedCollectionData } = useCollection(selectedCollectionId)
-
-  // Build a map of collectionId -> watchIds for filtering
-  const collectionWatches = useMemo(() => {
-    const map = new Map<number, number[]>()
-    if (selectedCollectionData) {
-      map.set(selectedCollectionData.id, selectedCollectionData.watches.map(w => w.id))
-    }
-    // Also include data from all collections for the dropdown
-    collections?.forEach(c => {
-      if (!map.has(c.id) && c.watchCount > 0) {
-        // We don't have the watch IDs here, they'll be fetched when that collection is selected
-      }
-    })
-    return map
-  }, [selectedCollectionData, collections])
 
   const handleLogout = () => {
     logout()
@@ -150,7 +134,6 @@ export default function DashboardPage() {
 
         <WatchList
           selectedCollectionId={selectedCollectionId}
-          collectionWatches={collectionWatches}
         />
       </main>
 

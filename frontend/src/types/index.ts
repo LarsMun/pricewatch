@@ -86,6 +86,7 @@ export interface ProductWatch {
   lastSuccessfulCheckAt: string | null
   isActive: boolean
   createdAt: string
+  collectionIds: number[]
 }
 
 export interface PriceCheck {

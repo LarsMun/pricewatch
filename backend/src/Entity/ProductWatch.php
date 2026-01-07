@@ -104,10 +104,15 @@ class ProductWatch
     #[ORM\OrderBy(['sentAt' => 'DESC'])]
     private Collection $notifications;
 
+    /** @var Collection<int, \App\Entity\Collection> */
+    #[ORM\ManyToMany(targetEntity: \App\Entity\Collection::class, mappedBy: 'productWatches')]
+    private Collection $collections;
+
     public function __construct()
     {
         $this->priceChecks = new ArrayCollection();
         $this->notifications = new ArrayCollection();
+        $this->collections = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->scheduleNextCheck();
     }
@@ -417,6 +422,18 @@ class ProductWatch
             $notification->setProductWatch($this);
         }
         return $this;
+    }
+
+    /** @return Collection<int, \App\Entity\Collection> */
+    public function getCollections(): Collection
+    {
+        return $this->collections;
+    }
+
+    /** @return int[] */
+    public function getCollectionIds(): array
+    {
+        return $this->collections->map(fn($c) => $c->getId())->toArray();
     }
 
     /**

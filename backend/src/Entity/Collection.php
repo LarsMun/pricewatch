@@ -31,7 +31,7 @@ class Collection
     private ?string $description = null;
 
     /** @var DoctrineCollection<int, ProductWatch> */
-    #[ORM\ManyToMany(targetEntity: ProductWatch::class)]
+    #[ORM\ManyToMany(targetEntity: ProductWatch::class, inversedBy: 'collections')]
     #[ORM\JoinTable(name: 'collection_product_watch')]
     private DoctrineCollection $productWatches;
 

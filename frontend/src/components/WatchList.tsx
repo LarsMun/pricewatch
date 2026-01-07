@@ -120,10 +120,9 @@ function CollectionDropdown({ watch, collections, watchCollectionIds }: Collecti
 interface WatchCardProps {
   watch: ProductWatch
   collections: Collection[]
-  watchCollectionIds: number[]
 }
 
-function WatchCard({ watch, collections, watchCollectionIds }: WatchCardProps) {
+function WatchCard({ watch, collections }: WatchCardProps) {
   const deleteWatch = useDeleteWatch()
   const toggleWatch = useToggleWatch()
 
@@ -160,7 +159,7 @@ function WatchCard({ watch, collections, watchCollectionIds }: WatchCardProps) {
             <CollectionDropdown
               watch={watch}
               collections={collections}
-              watchCollectionIds={watchCollectionIds}
+              watchCollectionIds={watch.collectionIds}
             />
             <WatchStatusBadge watch={watch} />
           </div>
@@ -246,10 +245,9 @@ function WatchCard({ watch, collections, watchCollectionIds }: WatchCardProps) {
 
 interface WatchListProps {
   selectedCollectionId?: number | null
-  collectionWatches?: Map<number, number[]> // collectionId -> watchIds
 }
 
-export default function WatchList({ selectedCollectionId, collectionWatches }: WatchListProps) {
+export default function WatchList({ selectedCollectionId }: WatchListProps) {
   const { data: watches, isLoading: watchesLoading, error: watchesError } = useWatches()
   const { data: collections, isLoading: collectionsLoading } = useCollections()
 
@@ -280,23 +278,10 @@ export default function WatchList({ selectedCollectionId, collectionWatches }: W
     )
   }
 
-  // Filter watches by selected collection
+  // Filter watches by selected collection using collectionIds from the watch
   let filteredWatches = watches
-  if (selectedCollectionId && collectionWatches) {
-    const watchIdsInCollection = collectionWatches.get(selectedCollectionId) || []
-    filteredWatches = watches.filter((w) => watchIdsInCollection.includes(w.id))
-  }
-
-  // Build a map of watchId -> collectionIds for the dropdown
-  const watchToCollections = new Map<number, number[]>()
-  if (collectionWatches) {
-    collectionWatches.forEach((watchIds, collectionId) => {
-      watchIds.forEach((watchId) => {
-        const existing = watchToCollections.get(watchId) || []
-        existing.push(collectionId)
-        watchToCollections.set(watchId, existing)
-      })
-    })
+  if (selectedCollectionId) {
+    filteredWatches = watches.filter((w) => w.collectionIds.includes(selectedCollectionId))
   }
 
   if (filteredWatches.length === 0) {
@@ -314,7 +299,6 @@ export default function WatchList({ selectedCollectionId, collectionWatches }: W
           key={watch.id}
           watch={watch}
           collections={collections || []}
-          watchCollectionIds={watchToCollections.get(watch.id) || []}
         />
       ))}
     </div>

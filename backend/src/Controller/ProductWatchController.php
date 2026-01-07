@@ -316,6 +316,7 @@ class ProductWatchController extends AbstractController
             'lastSuccessfulCheckAt' => $watch->getLastSuccessfulCheckAt()?->format('c'),
             'imageUrl' => $watch->getImageUrl(),
             'createdAt' => $watch->getCreatedAt()->format('c'),
+            'collectionIds' => $watch->getCollectionIds(),
         ];
     }
 }
