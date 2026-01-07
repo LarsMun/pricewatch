@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isCreateCollectionModalOpen, setIsCreateCollectionModalOpen] = useState(false)
   const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const checkAll = useCheckAllWatches()
   const { data: watches } = useWatches()
   const { data: collections } = useCollections()
@@ -31,9 +32,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">ShopQ - Mijn overzicht</h1>
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:py-6 flex justify-between items-center">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">ShopQ</h1>
+
+          {/* Desktop menu */}
+          <div className="hidden md:flex items-center gap-4">
             <span className="text-gray-600">{user?.email}</span>
             {user?.roles?.includes('ROLE_ADMIN') && (
               <Link
@@ -56,7 +59,57 @@ export default function DashboardPage() {
               Uitloggen
             </button>
           </div>
+
+          {/* Mobile hamburger button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+          >
+            {isMobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t bg-white">
+            <div className="px-4 py-3 space-y-2">
+              <div className="text-sm text-gray-600 py-2 border-b">{user?.email}</div>
+              {user?.roles?.includes('ROLE_ADMIN') && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-4 py-3 text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg transition"
+                >
+                  Admin
+                </Link>
+              )}
+              <Link
+                to="/settings"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-4 py-3 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+              >
+                Instellingen
+              </Link>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false)
+                  handleLogout()
+                }}
+                className="w-full text-left px-4 py-3 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+              >
+                Uitloggen
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -70,17 +123,18 @@ export default function DashboardPage() {
           totalWatchCount={watches?.length || 0}
         />
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-xl font-semibold text-gray-900">
             {selectedCollectionId && collections
               ? collections.find(c => c.id === selectedCollectionId)?.name || 'Collectie'
               : 'Mijn prijswatches'}
           </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={handleCheckAll}
               disabled={checkAll.isPending}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center gap-2 disabled:opacity-50"
+              className="p-2 sm:px-4 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              title="Check alle"
             >
               {checkAll.isPending ? (
                 <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -92,25 +146,26 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               )}
-              {checkAll.isPending ? 'Checken...' : 'Check alle'}
+              <span className="hidden sm:inline">{checkAll.isPending ? 'Checken...' : 'Check alle'}</span>
             </button>
             <Link
               to="/bookmarklet"
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+              className="p-2 sm:px-4 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2"
+              title="Bookmarklet"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              Bookmarklet
+              <span className="hidden sm:inline">Bookmarklet</span>
             </Link>
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
+              className="flex-1 sm:flex-none px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Nieuwe watch
+              <span className="sm:inline">Toevoegen</span>
             </button>
           </div>
         </div>
