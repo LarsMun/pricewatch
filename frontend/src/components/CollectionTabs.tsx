@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCollections, useDeleteCollection, useUpdateCollection } from '../hooks/useCollections'
+import { useCollections, useDeleteCollection, useUpdateCollection, useAddWatchToCollection } from '../hooks/useCollections'
 import type { Collection } from '../types'
 
 interface CollectionTabsProps {
@@ -18,8 +18,29 @@ export default function CollectionTabs({
   const { data: collections, isLoading } = useCollections()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [dragOverId, setDragOverId] = useState<number | null>(null)
   const updateCollection = useUpdateCollection()
   const deleteCollection = useDeleteCollection()
+  const addWatchToCollection = useAddWatchToCollection()
+
+  const handleDragOver = (e: React.DragEvent, collectionId: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDragOverId(collectionId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverId(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, collectionId: number) => {
+    e.preventDefault()
+    setDragOverId(null)
+    const watchId = parseInt(e.dataTransfer.getData('watchId'), 10)
+    if (watchId && collectionId) {
+      addWatchToCollection.mutate({ collectionId, watchId })
+    }
+  }
 
   const handleStartEdit = (collection: Collection) => {
     setEditingId(collection.id)
@@ -108,10 +129,15 @@ export default function CollectionTabs({
             <>
               <button
                 onClick={() => onSelectCollection(collection.id)}
+                onDragOver={(e) => handleDragOver(e, collection.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, collection.id)}
                 className={`px-4 py-2 rounded-lg font-medium transition pr-8 ${
-                  selectedCollection === collection.id
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  dragOverId === collection.id
+                    ? 'bg-primary-400 text-white ring-2 ring-primary-600 ring-offset-2'
+                    : selectedCollection === collection.id
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {collection.name} ({collection.watchCount})

@@ -136,6 +136,11 @@ function WatchCard({ watch, collections }: WatchCardProps) {
     toggleWatch.mutate({ id: watch.id, isActive: !watch.isActive })
   }
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('watchId', watch.id.toString())
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   const priceChange = watch.currentPrice && watch.originalPrice
     ? parseFloat(watch.currentPrice) - parseFloat(watch.originalPrice)
     : null
@@ -145,7 +150,11 @@ function WatchCard({ watch, collections }: WatchCardProps) {
     : null
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition">
+    <div
+      className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition cursor-grab active:cursor-grabbing"
+      draggable
+      onDragStart={handleDragStart}
+    >
       {/* Title header */}
       <div className="p-4 pb-3">
         <div className="flex justify-between items-start gap-2">
