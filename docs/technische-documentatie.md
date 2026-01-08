@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 3.1
-**Datum:** 7 Januari 2026
-**Status:** Production Ready (Fase 1-14)
+**Versie:** 3.2
+**Datum:** 8 Januari 2026
+**Status:** Production Ready (Fase 1-16)
 
 ---
 
@@ -256,6 +256,7 @@ getWatchCount(): int
 | Method | Endpoint | Beschrijving |
 |--------|----------|--------------|
 | GET | `/api/health` | Health check (database + timestamp) |
+| GET | `/robots.txt` | Disallow all crawlers |
 
 #### Collections (`CollectionController`)
 
@@ -340,6 +341,11 @@ Discord en Slack webhook notificaties.
 ```php
 sendNotification(User $user, ProductWatch $watch, Notification $notification): void
 ```
+
+**SSRF Protection:**
+- Whitelist-based validatie: alleen `discord.com`, `discordapp.com`, `hooks.slack.com`
+- HTTPS verplicht
+- Geblokkeerde requests worden gelogd
 
 **Discord:**
 - Rich embeds met kleurcodering (groen/rood/grijs)
@@ -583,6 +589,23 @@ Dropdown om watch aan collecties toe te voegen:
 - Click toggled lidmaatschap
 - Loading state tijdens mutatie
 
+#### ConfirmModal
+Herbruikbare modal voor bevestigingsdialogen (vervangt native `confirm()`):
+- Props: `isOpen`, `title`, `message`, `onConfirm`, `onCancel`
+- Variants: `danger` (rood), `warning` (geel), `default` (primary)
+- Escape key sluit modal
+- Backdrop click sluit modal
+- Focus management (cancel button krijgt focus)
+- Animatie: scale-in effect
+
+#### EmptyState (in WatchList)
+Aantrekkelijke empty state voor nieuwe gebruikers:
+- SVG illustratie
+- Uitleg wat ShopQ doet
+- "Eerste product toevoegen" primary button
+- Link naar bookmarklet pagina
+- Tip over bookmarklet functionaliteit
+
 ### Hooks (React Query)
 
 ```typescript
@@ -667,7 +690,8 @@ CREATE TABLE user (
     slack_webhook_url VARCHAR(500) DEFAULT NULL,
     created_at DATETIME NOT NULL,
     INDEX idx_verification_token (verification_token),
-    INDEX idx_password_reset_token (password_reset_token)
+    INDEX idx_password_reset_token (password_reset_token),
+    INDEX idx_user_verified (is_verified)
 );
 
 -- Product watches
@@ -707,7 +731,8 @@ CREATE TABLE price_check (
     error_message VARCHAR(1000),
     checked_at DATETIME NOT NULL,
     FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE,
-    INDEX idx_watch_checked (product_watch_id, checked_at)
+    INDEX idx_watch_checked (product_watch_id, checked_at),
+    INDEX idx_price_check_watch_success (product_watch_id, was_successful)
 );
 
 -- Notificaties
@@ -718,7 +743,8 @@ CREATE TABLE notification (
     new_price DECIMAL(10,2),
     type ENUM('price_decrease', 'price_increase', 'site_broken'),
     sent_at DATETIME NOT NULL,
-    FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE
+    FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE,
+    INDEX idx_notification_type_sent (type, sent_at)
 );
 
 -- Collecties
@@ -791,6 +817,10 @@ CREATE TABLE collection_product_watch (
 - [x] Responsieve UI (Tailwind CSS)
 - [x] Footer met juridische links
 - [x] Affiliate disclaimer ("Bekijk op [domein]")
+- [x] Custom confirm modals (vervangt native dialogs)
+- [x] Inline form validatie (email, password)
+- [x] Auto-dismiss success messages (5 seconden)
+- [x] Empty state met illustratie en CTA
 
 #### Collecties
 - [x] Collectie CRUD operaties
@@ -1035,4 +1065,4 @@ De pipeline draait bij elke push/PR naar main:
 
 ---
 
-*Laatst bijgewerkt: 5 Januari 2026*
+*Laatst bijgewerkt: 8 Januari 2026*

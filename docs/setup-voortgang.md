@@ -1,6 +1,6 @@
 # ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-07
+> Laatst bijgewerkt: 2026-01-08
 
 ## Huidige Status: LIVE IN PRODUCTIE 🚀
 
@@ -433,6 +433,76 @@ Gebruikers kunnen nu hun watches groeperen in collecties (bijv. "Dressoirs", "Wo
 - `frontend/src/pages/DashboardPage.tsx` - CollectionTabs integratie (vereenvoudigd)
 - `frontend/src/components/WatchList.tsx` - CollectionDropdown + filtering (vereenvoudigd)
 - `frontend/src/hooks/useCollections.ts` - watches query invalidatie
+
+### Fase 15: UX Polish (Sprint 1 & 2) ✅
+
+Na een UX-audit zijn diverse verbeteringen doorgevoerd voor een betere gebruikerservaring.
+
+#### Sprint 1: Foundation
+- [x] **Security Headers** - HSTS, CSP, Permissions-Policy toegevoegd aan nginx.prod.conf
+- [x] **CI Vulnerability Scanning** - `composer audit` en `npm audit` in GitHub Actions
+- [x] **Autocomplete Attributes** - Toegevoegd aan alle login/register formulieren
+- [x] **Color Contrast Fix** - `text-gray-400` → `text-gray-500` voor betere leesbaarheid
+- [x] **Lazy Loading Images** - `loading="lazy"` op product afbeeldingen
+- [x] **Secrets Protection** - `backend/.env` toegevoegd aan .gitignore
+
+#### Sprint 2: Forms & Feedback
+- [x] **Custom ConfirmModal** - Native `confirm()` vervangen door styled modal component
+  - Danger/warning/default variants met icons
+  - Escape key en backdrop click handling
+  - Focus management
+- [x] **Empty Dashboard State** - Aantrekkelijke empty state met:
+  - SVG illustratie
+  - Uitleg wat ShopQ doet
+  - "Eerste product toevoegen" CTA button
+  - Link naar bookmarklet
+- [x] **Inline Form Validation** - Real-time validatie op:
+  - RegisterPage: email format, password length, password match
+  - ResetPasswordPage: password length, password match
+  - Visuele feedback met groene/rode borders
+  - Checkmark icons bij correcte invoer
+- [x] **Auto-dismiss Success Messages** - Success berichten verdwijnen na 5 seconden
+  - Fade-in animatie bij verschijnen
+  - Handmatige dismiss button
+  - useEffect cleanup voor memory leaks
+
+#### Nieuwe/Gewijzigde Bestanden
+- `frontend/src/components/ConfirmModal.tsx` - Nieuw modal component
+- `frontend/src/components/WatchList.tsx` - Empty state + ConfirmModal integratie
+- `frontend/src/components/CollectionTabs.tsx` - ConfirmModal integratie
+- `frontend/src/pages/WatchDetailPage.tsx` - ConfirmModal integratie
+- `frontend/src/pages/DashboardPage.tsx` - Auto-dismiss, hamburger menu
+- `frontend/src/pages/RegisterPage.tsx` - Inline validatie
+- `frontend/src/pages/ResetPasswordPage.tsx` - Inline validatie
+- `frontend/src/index.css` - Animaties (slide-up, scale-in, fade-in-down)
+
+### Fase 16: Security Medium Priority (Sprint 3) ✅
+
+De resterende MEDIUM prioriteit security items uit de remediation plan.
+
+#### Implementatie
+- [x] **Webhook SSRF Protection** - Whitelist-based validatie in WebhookService:
+  - Alleen `discord.com`, `discordapp.com`, `hooks.slack.com` toegestaan
+  - HTTPS verplicht
+  - Logging van geblokkeerde requests
+- [x] **N+1 Query Fix** - `findByUserWithHistory()` in ProductWatchRepository:
+  - Eager loading van priceChecks en notifications
+  - Gebruikt in data export endpoint
+  - Voorkomt N+1 queries bij veel watches
+- [x] **Database Indexes** - Performance indexes toegevoegd:
+  - `idx_price_check_watch_success` op price_check tabel
+  - `idx_notification_type_sent` op notification tabel
+  - `idx_user_verified` op user tabel
+- [x] **robots.txt Endpoint** - `/robots.txt` toegevoegd aan HealthController:
+  - `User-agent: *` + `Disallow: /`
+  - Voorkomt indexering van API door zoekmachines
+
+#### Nieuwe/Gewijzigde Bestanden
+- `backend/src/Service/WebhookService.php` - SSRF whitelist validatie
+- `backend/src/Repository/ProductWatchRepository.php` - Eager loading methode
+- `backend/src/Controller/AuthController.php` - Gebruikt nieuwe repository methode
+- `backend/src/Controller/HealthController.php` - robots.txt endpoint
+- `backend/migrations/Version20260107120000.php` - Database indexes
 
 ---
 
