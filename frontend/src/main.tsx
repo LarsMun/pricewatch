@@ -38,7 +38,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<div className="p-8 text-center">Er is een fout opgetreden. Probeer de pagina te vernieuwen.</div>}>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <BrowserRouter basename="/app">
           <App />
         </BrowserRouter>
       </QueryClientProvider>

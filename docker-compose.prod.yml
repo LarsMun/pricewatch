@@ -1,5 +1,5 @@
 services:
-  # MariaDB Database
+  # MariaDB Database (App)
   db:
     image: mariadb:11.2
     restart: always
@@ -66,7 +66,7 @@ services:
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
       - "traefik.http.services.api.loadbalancer.server.port=80"
 
-  # React Frontend
+  # React Frontend (serves /app/* routes)
   frontend:
     image: ghcr.io/larsmun/pricewatch/frontend:latest
     restart: always
@@ -81,14 +81,81 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`shopq.app`) || Host(`www.shopq.app`)"
+      # Frontend handles /app/* routes with higher priority
+      - "traefik.http.routers.frontend.rule=Host(`shopq.app`) && PathPrefix(`/app`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.priority=20"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Strip /app prefix so React app receives clean paths
+      - "traefik.http.middlewares.strip-app-prefix.stripprefix.prefixes=/app"
+      - "traefik.http.routers.frontend.middlewares=strip-app-prefix"
+
+  # WordPress CMS (landing page, marketing site)
+  wordpress:
+    image: wordpress:6.7-php8.3-apache
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    environment:
+      WORDPRESS_DB_HOST: wordpress-db
+      WORDPRESS_DB_USER: ${WP_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${WP_DB_NAME:-wordpress}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'https://shopq.app');
+        define('WP_SITEURL', 'https://shopq.app');
+    volumes:
+      - wordpress-data:/var/www/html
+    depends_on:
+      wordpress-db:
+        condition: service_healthy
+    networks:
+      - internal
+      - web
+    labels:
+      - "traefik.enable=true"
+      # WordPress handles all routes except /app/*
+      - "traefik.http.routers.wordpress.rule=Host(`shopq.app`) || Host(`www.shopq.app`)"
+      - "traefik.http.routers.wordpress.entrypoints=websecure"
+      - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.wordpress.priority=10"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
       # Redirect www to non-www
       - "traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\\.(.*)"
       - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$${1}"
-      - "traefik.http.routers.frontend.middlewares=www-redirect"
+      - "traefik.http.routers.wordpress.middlewares=www-redirect"
+
+  # WordPress Database
+  wordpress-db:
+    image: mariadb:11.2
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
+    environment:
+      MARIADB_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${WP_DB_NAME:-wordpress}
+      MARIADB_USER: ${WP_DB_USER:-wordpress}
+      MARIADB_PASSWORD: ${WP_DB_PASSWORD}
+    volumes:
+      - wordpress-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
 
   # Price check scheduler (cron)
   scheduler:
@@ -122,6 +189,8 @@ services:
 
 volumes:
   db-data:
+  wordpress-data:
+  wordpress-db-data:
 
 networks:
   internal:
