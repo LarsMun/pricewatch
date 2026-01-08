@@ -104,13 +104,13 @@ ShopQ is volledig live en operationeel op productie-servers.
 #### CLI Commands
 ```bash
 # Test scraper met URL + selector
-docker exec shopq-php php bin/console app:test-scrape "https://example.com" ".price"
+docker exec pricewatch-php php bin/console app:test-scrape "https://example.com" ".price"
 
 # Check alle due watches
-docker exec shopq-php php bin/console app:check-prices
+docker exec pricewatch-php php bin/console app:check-prices
 
 # Check specifieke watch
-docker exec shopq-php php bin/console app:check-prices --watch=1
+docker exec pricewatch-php php bin/console app:check-prices --watch=1
 ```
 
 ---

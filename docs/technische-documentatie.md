@@ -29,7 +29,7 @@ De applicatie identificeert zichzelf als `ShopQBot/1.0` bij het scrapen en respe
 ## Projectstructuur
 
 ```
-pricewatch/
+shopq/
 ├── backend/                    # Symfony PHP applicatie
 │   ├── src/
 │   │   ├── Command/           # CLI commands (price checking)
@@ -214,7 +214,7 @@ getWatchCount(): int
 | POST | `/api/login` | JWT login (username, password) |
 | POST | `/api/register` | Account aanmaken (email, password, acceptTerms) + stuurt verificatie email |
 | GET | `/api/me` | Huidige gebruiker ophalen |
-| POST | `/api/me/delete` | Account verwijderen (GDPR) |
+| DELETE | `/api/me` | Account verwijderen (GDPR) |
 | GET | `/api/me/export` | Gebruikersdata exporteren (GDPR) |
 | POST | `/api/verify-email` | Email verificatie met token |
 | POST | `/api/resend-verification` | Verstuur verificatie email opnieuw (JWT) |
