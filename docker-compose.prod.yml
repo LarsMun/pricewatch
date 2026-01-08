@@ -110,6 +110,10 @@ services:
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_HOME', 'https://shopq.app');
         define('WP_SITEURL', 'https://shopq.app');
+        define('FORCE_SSL_ADMIN', true);
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $_SERVER['HTTPS'] = 'on';
+        }
     volumes:
       - wordpress-data:/var/www/html
     depends_on:
