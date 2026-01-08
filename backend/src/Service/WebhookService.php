@@ -10,10 +10,43 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class WebhookService
 {
+    private const ALLOWED_WEBHOOK_HOSTS = [
+        'discord.com',
+        'discordapp.com',
+        'hooks.slack.com',
+    ];
+
     public function __construct(
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
     ) {}
+
+    /**
+     * Validates webhook URL to prevent SSRF attacks.
+     * Only allows known webhook providers (Discord, Slack).
+     */
+    private function isValidWebhookUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return false;
+        }
+
+        // Only allow HTTPS
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        if ($scheme !== 'https') {
+            return false;
+        }
+
+        // Check against whitelist of allowed webhook hosts
+        foreach (self::ALLOWED_WEBHOOK_HOSTS as $allowedHost) {
+            if ($host === $allowedHost || str_ends_with($host, '.' . $allowedHost)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function sendNotification(User $user, ProductWatch $watch, Notification $notification): void
     {
@@ -28,6 +61,11 @@ class WebhookService
 
     private function sendDiscordWebhook(string $url, ProductWatch $watch, Notification $notification): void
     {
+        if (!$this->isValidWebhookUrl($url)) {
+            $this->logger->warning("Blocked Discord webhook to non-whitelisted URL", ['url' => $url]);
+            return;
+        }
+
         $productName = $watch->getProductName() ?: $watch->getDomain();
         $type = $notification->getType()->value;
         
@@ -79,6 +117,11 @@ class WebhookService
 
     private function sendSlackWebhook(string $url, ProductWatch $watch, Notification $notification): void
     {
+        if (!$this->isValidWebhookUrl($url)) {
+            $this->logger->warning("Blocked Slack webhook to non-whitelisted URL", ['url' => $url]);
+            return;
+        }
+
         $productName = $watch->getProductName() ?: $watch->getDomain();
         $type = $notification->getType()->value;
 

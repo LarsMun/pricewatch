@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Repository\ProductWatchRepository;
 use App\Service\EmailVerificationService;
 use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -177,13 +178,16 @@ class AuthController extends AbstractController
     }
 
     #[Route('/me/export', name: 'api_export_data', methods: ['GET'])]
-    public function exportData(): JsonResponse
+    public function exportData(ProductWatchRepository $watchRepository): JsonResponse
     {
         /** @var User $user */
         $user = $this->getUser();
 
+        // Use eager loading to avoid N+1 queries
+        $userWatches = $watchRepository->findByUserWithHistory($user);
+
         $watches = [];
-        foreach ($user->getProductWatches() as $watch) {
+        foreach ($userWatches as $watch) {
             $priceChecks = [];
             foreach ($watch->getPriceChecks() as $check) {
                 $priceChecks[] = [

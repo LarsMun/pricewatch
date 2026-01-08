@@ -111,4 +111,22 @@ class ProductWatchRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Find all watches by user with price checks and notifications eagerly loaded.
+     * Used for data export to avoid N+1 queries.
+     *
+     * @return ProductWatch[]
+     */
+    public function findByUserWithHistory(User $user): array
+    {
+        return $this->createQueryBuilder('pw')
+            ->leftJoin('pw.priceChecks', 'pc')->addSelect('pc')
+            ->leftJoin('pw.notifications', 'n')->addSelect('n')
+            ->where('pw.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('pw.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

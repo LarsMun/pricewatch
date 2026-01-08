@@ -29,4 +29,15 @@ class HealthController extends AbstractController
             'timestamp' => (new \DateTimeImmutable())->format('c'),
         ], $status);
     }
+
+    #[Route('/robots.txt', name: 'robots_txt', methods: ['GET'])]
+    public function robotsTxt(): Response
+    {
+        // Disallow all crawlers from the API
+        return new Response(
+            "User-agent: *\nDisallow: /",
+            Response::HTTP_OK,
+            ['Content-Type' => 'text/plain']
+        );
+    }
 }
