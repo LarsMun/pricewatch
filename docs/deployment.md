@@ -4,7 +4,9 @@
 
 | Omgeving | URL | Status |
 |----------|-----|--------|
-| Frontend | https://shopq.app | Live |
+| WordPress | https://shopq.app | Live |
+| WordPress Admin | https://shopq.app/wp-admin | Live |
+| React App | https://shopq.app/app | Live |
 | API | https://api.shopq.app | Live |
 | API Docs | https://api.shopq.app/api/doc | Live |
 | Health Check | https://api.shopq.app/api/health | Live |
@@ -33,30 +35,33 @@
 │  │                    Traefik                           │    │
 │  │              (Reverse Proxy + SSL)                   │    │
 │  │         Port 80/443 → Let's Encrypt                 │    │
-│  └─────────────────┬────────────────────┬──────────────┘    │
-│                    │                    │                    │
-│                    ▼                    ▼                    │
-│           ┌───────────────┐    ┌───────────────┐            │
-│           │   Frontend    │    │     API       │            │
-│           │    (nginx)    │    │ (PHP/Apache)  │            │
-│           │  shopq.app    │    │api.shopq.app  │            │
-│           └───────────────┘    └───────┬───────┘            │
-│                                        │                     │
-│                                        ▼                     │
-│                                ┌───────────────┐            │
-│                                │   MariaDB     │            │
-│                                │   11.2        │            │
-│                                └───────────────┘            │
-│                                        ▲                     │
-│                                        │                     │
-│                                ┌───────────────┐            │
-│                                │  Scheduler    │            │
-│                                │ (elke 5 min)  │            │
-│                                └───────────────┘            │
+│  └────────┬───────────────┬───────────────┬────────────┘    │
+│           │               │               │                  │
+│           │ /app/*        │ /* (default)  │ api.*           │
+│           ▼               ▼               ▼                  │
+│    ┌───────────┐   ┌───────────┐   ┌───────────┐            │
+│    │ Frontend  │   │ WordPress │   │    API    │            │
+│    │  (nginx)  │   │ (Apache)  │   │(PHP/Apache)│            │
+│    │ /app/*    │   │ shopq.app │   │api.shopq  │            │
+│    └───────────┘   └─────┬─────┘   └─────┬─────┘            │
+│                          │               │                   │
+│                          ▼               ▼                   │
+│                   ┌───────────┐   ┌───────────┐             │
+│                   │ WP DB     │   │  App DB   │             │
+│                   │ (MariaDB) │   │ (MariaDB) │             │
+│                   └───────────┘   └───────────┘             │
+│                                          ▲                   │
+│                                          │                   │
+│                                   ┌───────────┐             │
+│                                   │ Scheduler │             │
+│                                   │(elke 5min)│             │
+│                                   └───────────┘             │
 │                                                              │
 │  Network: web (external) + shopq_internal                   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> Zie [docs/wordpress.md](wordpress.md) voor gedetailleerde WordPress documentatie.
 
 ## Prerequisites
 
@@ -234,14 +239,20 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod \
 | `VITE_API_URL` | API URL voor frontend | `https://api.shopq.app` |
 | `CORS_ALLOW_ORIGIN` | CORS regex | `^https://shopq\.app$` |
 | `SENTRY_DSN` | Sentry error tracking | (optioneel) |
+| `WP_DB_ROOT_PASSWORD` | WordPress DB root password | `strong_random_password` |
+| `WP_DB_NAME` | WordPress database naam | `wordpress` |
+| `WP_DB_USER` | WordPress database gebruiker | `wordpress` |
+| `WP_DB_PASSWORD` | WordPress database password | `strong_random_password` |
 
 ## Services
 
 | Service | Container | Intern Port | Beschrijving |
 |---------|-----------|-------------|--------------|
-| `frontend` | shopq-frontend-1 | 80 | React SPA via nginx |
+| `wordpress` | shopq-wordpress-1 | 80 | WordPress CMS (landing pages) |
+| `wordpress-db` | shopq-wordpress-db-1 | 3306 | WordPress MariaDB |
+| `frontend` | shopq-frontend-1 | 80 | React SPA via nginx (/app/*) |
 | `api` | shopq-api-1 | 80 | Symfony API via Apache |
-| `db` | shopq-db-1 | 3306 | MariaDB 11.2 |
+| `db` | shopq-db-1 | 3306 | App MariaDB 11.2 |
 | `scheduler` | shopq-scheduler-1 | - | Prijscheck cron (5 min) |
 
 ## Dagelijks Beheer
