@@ -113,13 +113,16 @@ class AuthController extends AbstractController
             'createdAt' => $user->getCreatedAt()->format('c'),
             'discordWebhookUrl' => $user->getDiscordWebhookUrl(),
             'slackWebhookUrl' => $user->getSlackWebhookUrl(),
+            'username' => $user->getUsername(),
+            'isPublic' => $user->isPublic(),
         ]);
     }
 
     #[Route('/me/settings', name: 'api_update_settings', methods: ['PATCH'])]
     public function updateSettings(
         Request $request,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        ValidatorInterface $validator
     ): JsonResponse {
         /** @var User $user */
         $user = $this->getUser();
@@ -128,6 +131,31 @@ class AuthController extends AbstractController
 
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (array_key_exists('username', $data)) {
+            $username = $data['username'];
+            if ($username !== null && $username !== '') {
+                // Check for reserved words
+                $reserved = ['admin', 'api', 'app', 'dashboard', 'login', 'register', 'settings', 'product', 'u', 'user', 'users', 'verify', 'unsubscribe'];
+                if (in_array(strtolower($username), $reserved, true)) {
+                    return $this->json(['error' => 'Deze gebruikersnaam is gereserveerd'], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Check uniqueness
+                $existing = $entityManager->getRepository(User::class)->findOneBy(['username' => $username]);
+                if ($existing && $existing->getId() !== $user->getId()) {
+                    return $this->json(['error' => 'Deze gebruikersnaam is al in gebruik'], Response::HTTP_BAD_REQUEST);
+                }
+
+                $user->setUsername($username);
+            } else {
+                $user->setUsername(null);
+            }
+        }
+
+        if (array_key_exists('isPublic', $data)) {
+            $user->setIsPublic((bool) $data['isPublic']);
         }
 
         if (array_key_exists('discordWebhookUrl', $data)) {
@@ -146,10 +174,22 @@ class AuthController extends AbstractController
             $user->setSlackWebhookUrl($url ?: null);
         }
 
+        // Validate the entity
+        $errors = $validator->validate($user);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+            }
+            return $this->json(['errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+        }
+
         $entityManager->flush();
 
         return $this->json([
             'message' => 'Instellingen opgeslagen',
+            'username' => $user->getUsername(),
+            'isPublic' => $user->isPublic(),
             'discordWebhookUrl' => $user->getDiscordWebhookUrl(),
             'slackWebhookUrl' => $user->getSlackWebhookUrl(),
         ]);

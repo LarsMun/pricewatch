@@ -4,21 +4,21 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/app/',
+  base: '/',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.svg', 'mask-icon.svg'],
       manifest: {
-        name: 'PrijsWacht',
-        short_name: 'PrijsWacht',
-        description: 'Volg productprijzen en ontvang meldingen bij prijsdalingen',
+        name: 'ShopQ',
+        short_name: 'ShopQ',
+        description: 'Ontdek producten en ontvang prijsalerts',
         theme_color: '#3b82f6',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/app/',
-        scope: '/app/',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'pwa-192x192.svg',

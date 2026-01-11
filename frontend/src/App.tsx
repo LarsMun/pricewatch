@@ -2,7 +2,11 @@ import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Footer from './components/Footer'
-import HomePage from './pages/HomePage'
+import FeedPage from './pages/FeedPage'
+import PublicProductPage from './pages/PublicProductPage'
+import UserProfilePage from './pages/UserProfilePage'
+import VerifySubscriptionPage from './pages/VerifySubscriptionPage'
+import UnsubscribePage from './pages/UnsubscribePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
@@ -24,15 +28,24 @@ function App() {
       <div className="min-h-screen flex flex-col">
         <div className="flex-1">
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            {/* Public feed pages */}
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/product/:id" element={<PublicProductPage />} />
+            <Route path="/u/:username" element={<UserProfilePage />} />
+            <Route path="/verify-subscription" element={<VerifySubscriptionPage />} />
+            <Route path="/unsubscribe" element={<UnsubscribePage />} />
+
+            {/* Auth pages */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/contact" element={<ContactPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Legal pages */}
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route
               path="/dashboard"
               element={

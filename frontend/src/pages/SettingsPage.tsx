@@ -5,6 +5,8 @@ import { api } from '../api/client'
 
 export default function SettingsPage() {
   const { user, token, refreshUser } = useAuth()
+  const [username, setUsername] = useState(user?.username || '')
+  const [isPublic, setIsPublic] = useState(user?.isPublic ?? true)
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState(user?.discordWebhookUrl || '')
   const [slackWebhookUrl, setSlackWebhookUrl] = useState(user?.slackWebhookUrl || '')
   const [isLoading, setIsLoading] = useState(false)
@@ -17,6 +19,8 @@ export default function SettingsPage() {
 
     try {
       await api.patch('/api/me/settings', {
+        username: username || null,
+        isPublic,
         discordWebhookUrl: discordWebhookUrl || null,
         slackWebhookUrl: slackWebhookUrl || null,
       }, token!)
@@ -45,6 +49,84 @@ export default function SettingsPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
+        {/* Profiel sectie */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Publiek Profiel</h2>
+          <p className="text-gray-600 mb-6">
+            Stel een gebruikersnaam in om je producten te delen met anderen.
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                Gebruikersnaam
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">shopq.app/u/</span>
+                <input
+                  type="text"
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="jouw_naam"
+                  minLength={3}
+                  maxLength={50}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Alleen kleine letters, cijfers en underscores. Min. 3 karakters.
+              </p>
+              {user?.username && (
+                <p className="text-sm text-primary-600 mt-2">
+                  <a href={`/u/${user.username}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    Bekijk je publieke profiel →
+                  </a>
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label htmlFor="isPublic" className="text-sm font-medium text-gray-700">
+                  Profiel openbaar
+                </label>
+                <p className="text-sm text-gray-500">
+                  Anderen kunnen je gevolgde producten zien
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPublic(!isPublic)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  isPublic ? 'bg-primary-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    isPublic ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {message && (
+              <div className={`p-3 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {message.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+            >
+              {isLoading ? 'Opslaan...' : 'Opslaan'}
+            </button>
+          </form>
+        </div>
+
+        {/* Webhooks sectie */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Webhook Notificaties</h2>
           <p className="text-gray-600 mb-6">

@@ -12,6 +12,8 @@ use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 
 class NotificationService
 {
+    private ?EmailSubscriberService $emailSubscriberService = null;
+
     public function __construct(
         private MailerInterface $mailer,
         private EntityManagerInterface $entityManager,
@@ -19,13 +21,23 @@ class NotificationService
         private WebhookService $webhookService,
         private string $fromEmail = 'noreply@shopq.app',
         private string $fromName = 'ShopQ',
-    ) {}
+    ) {
+    }
+
+    /**
+     * Setter injection to avoid circular dependency.
+     */
+    public function setEmailSubscriberService(EmailSubscriberService $service): void
+    {
+        $this->emailSubscriberService = $service;
+    }
 
     public function notifyPriceDecrease(ProductWatch $watch, string $oldPrice, string $newPrice): Notification
     {
         $notification = Notification::priceDecrease($watch, $oldPrice, $newPrice);
         $this->sendEmail($watch, $notification);
         $this->sendWebhooks($watch, $notification);
+        $this->notifySubscribers($watch, $notification);
         $this->persist($notification);
         $this->logger->info("Sent price decrease notification for watch #{$watch->getId()}: {$oldPrice} -> {$newPrice}");
         return $notification;
@@ -36,6 +48,7 @@ class NotificationService
         $notification = Notification::priceIncrease($watch, $oldPrice, $newPrice);
         $this->sendEmail($watch, $notification);
         $this->sendWebhooks($watch, $notification);
+        $this->notifySubscribers($watch, $notification);
         $this->persist($notification);
         $this->logger->info("Sent price increase notification for watch #{$watch->getId()}: {$oldPrice} -> {$newPrice}");
         return $notification;
@@ -98,6 +111,19 @@ class NotificationService
             NotificationType::PRICE_INCREASE => "Prijsstijging: {$productName}",
             NotificationType::SITE_BROKEN => "Site onbereikbaar: {$productName}",
         };
+    }
+
+    private function notifySubscribers(ProductWatch $watch, Notification $notification): void
+    {
+        if ($this->emailSubscriberService === null) {
+            return;
+        }
+
+        try {
+            $this->emailSubscriberService->notifySubscribers($watch, $notification);
+        } catch (\Throwable $e) {
+            $this->logger->error("Failed to notify subscribers: " . $e->getMessage());
+        }
     }
 
     private function persist(Notification $notification): void

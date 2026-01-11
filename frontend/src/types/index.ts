@@ -6,6 +6,8 @@ export interface User {
   createdAt: string
   discordWebhookUrl: string | null
   slackWebhookUrl: string | null
+  username: string | null
+  isPublic: boolean
 }
 
 export interface AdminStats {

@@ -37,3 +37,15 @@ services:
             $registrationEndpointLimiter: '@limiter.registration_endpoint'
             $passwordResetEndpointLimiter: '@limiter.password_reset_endpoint'
             $resendVerificationEndpointLimiter: '@limiter.resend_verification_endpoint'
+
+    App\Service\EmailSubscriberService:
+        arguments:
+            $frontendUrl: '%env(FRONTEND_URL)%'
+
+    App\Service\NotificationService:
+        calls:
+            - setEmailSubscriberService: ['@App\Service\EmailSubscriberService']
+
+    App\Controller\PublicController:
+        arguments:
+            $subscribeEndpointLimiter: '@limiter.subscribe_endpoint'

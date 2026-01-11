@@ -91,6 +91,12 @@ class ProductWatch
     #[ORM\Column(options: ['default' => true])]
     private bool $isActive = true;
 
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $isPublic = true;
+
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $subscriberCount = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -456,5 +462,41 @@ class ProductWatch
         $this->previousPrice = $this->currentPrice;
         $this->currentPrice = $newPrice;
         return true;
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->isPublic;
+    }
+
+    public function setIsPublic(bool $isPublic): static
+    {
+        $this->isPublic = $isPublic;
+        return $this;
+    }
+
+    public function getSubscriberCount(): int
+    {
+        return $this->subscriberCount;
+    }
+
+    public function setSubscriberCount(int $subscriberCount): static
+    {
+        $this->subscriberCount = $subscriberCount;
+        return $this;
+    }
+
+    public function incrementSubscriberCount(): static
+    {
+        $this->subscriberCount++;
+        return $this;
+    }
+
+    public function decrementSubscriberCount(): static
+    {
+        if ($this->subscriberCount > 0) {
+            $this->subscriberCount--;
+        }
+        return $this;
     }
 }

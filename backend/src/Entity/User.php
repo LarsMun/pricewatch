@@ -15,6 +15,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[UniqueEntity(fields: ['email'], message: 'Dit e-mailadres is al in gebruik.')]
+#[UniqueEntity(fields: ['username'], message: 'Deze gebruikersnaam is al in gebruik.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -53,6 +54,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $slackWebhookUrl = null;
+
+    #[ORM\Column(length: 50, unique: true, nullable: true)]
+    #[Assert\Length(min: 3, max: 50, minMessage: 'Gebruikersnaam moet minimaal 3 karakters zijn.', maxMessage: 'Gebruikersnaam mag maximaal 50 karakters zijn.')]
+    #[Assert\Regex(pattern: '/^[a-z0-9_]+$/', message: 'Gebruikersnaam mag alleen kleine letters, cijfers en underscores bevatten.')]
+    private ?string $username = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $isPublic = true;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
@@ -309,5 +318,29 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function hasWebhooksConfigured(): bool
     {
         return $this->discordWebhookUrl !== null || $this->slackWebhookUrl !== null;
+    }
+
+    public function getUsername(): ?string
+    {
+        return $this->username;
+    }
+
+    public function setUsername(?string $username): static
+    {
+        $this->username = $username;
+
+        return $this;
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->isPublic;
+    }
+
+    public function setIsPublic(bool $isPublic): static
+    {
+        $this->isPublic = $isPublic;
+
+        return $this;
     }
 }

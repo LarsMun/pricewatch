@@ -34,3 +34,8 @@ framework:
             policy: fixed_window
             limit: 3
             interval: '15 minutes'
+
+        subscribe_endpoint:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
