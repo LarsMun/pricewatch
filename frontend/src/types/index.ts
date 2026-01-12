@@ -169,6 +169,8 @@ export interface Collection {
   name: string
   description: string | null
   watchCount: number
+  isPublic: boolean
+  shareUrl: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -185,6 +187,7 @@ export interface CreateCollectionRequest {
 export interface UpdateCollectionRequest {
   name?: string
   description?: string | null
+  isPublic?: boolean
 }
 
 export interface Category {

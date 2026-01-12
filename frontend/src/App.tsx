@@ -5,6 +5,7 @@ import Footer from './components/Footer'
 import FeedPage from './pages/FeedPage'
 import PublicProductPage from './pages/PublicProductPage'
 import UserProfilePage from './pages/UserProfilePage'
+import UserCollectionPage from './pages/UserCollectionPage'
 import VerifySubscriptionPage from './pages/VerifySubscriptionPage'
 import UnsubscribePage from './pages/UnsubscribePage'
 import LoginPage from './pages/LoginPage'
@@ -32,6 +33,7 @@ function App() {
             <Route path="/" element={<FeedPage />} />
             <Route path="/product/:id" element={<PublicProductPage />} />
             <Route path="/u/:username" element={<UserProfilePage />} />
+            <Route path="/u/:username/:slug" element={<UserCollectionPage />} />
             <Route path="/verify-subscription" element={<VerifySubscriptionPage />} />
             <Route path="/unsubscribe" element={<UnsubscribePage />} />
 

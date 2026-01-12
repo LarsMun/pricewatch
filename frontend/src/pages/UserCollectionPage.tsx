@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useUserProfile, type PublicProduct } from '../hooks/usePublicFeed'
+import { useUserCollection, type PublicProduct } from '../hooks/usePublicFeed'
 import { useAuth } from '../contexts/AuthContext'
 import SubscribeModal from '../components/SubscribeModal'
 import { SEO } from '../components/SEO'
 
-export default function UserProfilePage() {
-  const { username } = useParams<{ username: string }>()
+export default function UserCollectionPage() {
+  const { username, slug } = useParams<{ username: string; slug: string }>()
   const { user } = useAuth()
-  const { data, isLoading, error } = useUserProfile(username || '')
+  const { data, isLoading, error } = useUserCollection(username || '', slug || '')
   const [subscribeProduct, setSubscribeProduct] = useState<PublicProduct | null>(null)
 
   if (isLoading) {
@@ -33,7 +33,7 @@ export default function UserProfilePage() {
     )
   }
 
-  if (error || !data?.user) {
+  if (error || !data) {
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-200">
@@ -44,9 +44,9 @@ export default function UserProfilePage() {
           </div>
         </header>
         <div className="max-w-6xl mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Gebruiker niet gevonden</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Collectie niet gevonden</h1>
           <p className="text-gray-600 mb-4">
-            Deze gebruiker bestaat niet of heeft een privé profiel.
+            Deze collectie bestaat niet of is niet publiek.
           </p>
           <Link to="/" className="text-blue-600 hover:underline">
             Terug naar overzicht
@@ -56,14 +56,12 @@ export default function UserProfilePage() {
     )
   }
 
-  const profile = data.user
-
   return (
     <div className="min-h-screen bg-gray-50">
       <SEO
-        title={`@${profile.username} - Producten`}
-        description={`Bekijk de ${profile.productCount} producten die @${profile.username} volgt op ShopQ. Stel prijsalerts in voor dezelfde producten.`}
-        canonicalUrl={`https://shopq.nl/u/${profile.username}`}
+        title={`${data.collection.name} - @${data.username}`}
+        description={data.collection.description || `Bekijk de collectie "${data.collection.name}" van @${data.username} met ${data.productCount} producten.`}
+        canonicalUrl={`https://shopq.nl/u/${data.username}/${data.collection.slug}`}
       />
 
       {/* Header */}
@@ -94,76 +92,42 @@ export default function UserProfilePage() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Link
-          to="/"
+          to={`/u/${data.username}`}
           className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-6"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Terug naar overzicht
+          Terug naar @{data.username}
         </Link>
 
-        {/* Profile Header */}
+        {/* Collection Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-blue-600">
-                {profile.username.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">@{profile.username}</h1>
-              <p className="text-gray-500">
-                Lid sinds{' '}
-                {new Date(profile.memberSince).toLocaleDateString('nl-NL', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
-            </div>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900">{data.collection.name}</h1>
+            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {data.productCount} {data.productCount === 1 ? 'product' : 'producten'}
+            </span>
           </div>
-          <div className="mt-4 flex gap-6 text-sm">
-            <div>
-              <span className="font-bold text-gray-900">{profile.productCount}</span>{' '}
-              <span className="text-gray-500">producten</span>
-            </div>
-          </div>
+          {data.collection.description && (
+            <p className="text-gray-600">{data.collection.description}</p>
+          )}
+          <p className="text-sm text-gray-500 mt-2">
+            Door{' '}
+            <Link to={`/u/${data.username}`} className="text-blue-600 hover:underline">
+              @{data.username}
+            </Link>
+          </p>
         </div>
 
-        {/* Collections */}
-        {profile.collections && profile.collections.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Collecties</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {profile.collections.map((collection) => (
-                <Link
-                  key={collection.slug}
-                  to={`/u/${profile.username}/${collection.slug}`}
-                  className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-                >
-                  <h3 className="font-medium text-gray-900">{collection.name}</h3>
-                  {collection.description && (
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{collection.description}</p>
-                  )}
-                  <p className="text-sm text-gray-400 mt-2">
-                    {collection.productCount} {collection.productCount === 1 ? 'product' : 'producten'}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Products */}
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Gevolgde producten</h2>
-
-        {profile.products.length === 0 ? (
+        {data.products.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <p className="text-gray-500">Deze gebruiker volgt nog geen producten.</p>
+            <p className="text-gray-500">Deze collectie bevat nog geen publieke producten.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profile.products.map((product) => (
+            {data.products.map((product) => (
               <div
                 key={product.id}
                 className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"

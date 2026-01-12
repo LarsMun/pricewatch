@@ -117,6 +117,10 @@ class CollectionController extends AbstractController
             $collection->setDescription($data['description']);
         }
 
+        if (array_key_exists('isPublic', $data)) {
+            $collection->setIsPublic((bool) $data['isPublic']);
+        }
+
         $errors = $this->validator->validate($collection);
         if (count($errors) > 0) {
             $errorMessages = [];
@@ -217,11 +221,17 @@ class CollectionController extends AbstractController
 
     private function serializeCollection(Collection $collection): array
     {
+        /** @var User $user */
+        $user = $this->getUser();
         return [
             'id' => $collection->getId(),
             'name' => $collection->getName(),
             'description' => $collection->getDescription(),
             'watchCount' => $collection->getWatchCount(),
+            'isPublic' => $collection->isPublic(),
+            'shareUrl' => $collection->isPublic() && $user->getUsername()
+                ? '/u/' . $user->getUsername() . '/' . $collection->getSlug()
+                : null,
             'createdAt' => $collection->getCreatedAt()->format('c'),
             'updatedAt' => $collection->getUpdatedAt()?->format('c'),
         ];

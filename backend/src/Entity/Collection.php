@@ -41,6 +41,9 @@ class Collection
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $isPublic = false;
+
     public function __construct()
     {
         $this->productWatches = new ArrayCollection();
@@ -140,5 +143,22 @@ class Collection
     {
         $this->updatedAt = $updatedAt;
         return $this;
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->isPublic;
+    }
+
+    public function setIsPublic(bool $isPublic): static
+    {
+        $this->isPublic = $isPublic;
+        $this->updatedAt = new \DateTimeImmutable();
+        return $this;
+    }
+
+    public function getSlug(): string
+    {
+        return strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $this->name), '-'));
     }
 }

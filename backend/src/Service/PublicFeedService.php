@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\ProductWatch;
 use App\Entity\User;
 use App\Repository\CategoryRepository;
+use App\Repository\CollectionRepository;
 use App\Repository\ProductWatchRepository;
 use App\Repository\UserRepository;
 use App\Repository\NotificationRepository;
@@ -16,6 +17,7 @@ class PublicFeedService
         private readonly UserRepository $userRepository,
         private readonly NotificationRepository $notificationRepository,
         private readonly CategoryRepository $categoryRepository,
+        private readonly CollectionRepository $collectionRepository,
     ) {
     }
 
@@ -193,9 +195,66 @@ class PublicFeedService
             ->getQuery()
             ->getResult();
 
+        // Get user's public collections
+        $collections = $this->collectionRepository->createQueryBuilder('c')
+            ->where('c.user = :user')
+            ->andWhere('c.isPublic = true')
+            ->setParameter('user', $user)
+            ->orderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
         return [
             'username' => $user->getUsername(),
             'memberSince' => $user->getCreatedAt()->format('c'),
+            'productCount' => count($watches),
+            'products' => array_map(fn(ProductWatch $w) => $this->formatProduct($w), $watches),
+            'collections' => array_map(fn($c) => [
+                'name' => $c->getName(),
+                'slug' => $c->getSlug(),
+                'description' => $c->getDescription(),
+                'productCount' => $c->getProductWatches()->filter(fn($pw) => $pw->isPublic() && $pw->isActive())->count(),
+            ], $collections),
+        ];
+    }
+
+    /**
+     * Get a user's public collection by slug.
+     */
+    public function getUserCollection(string $username, string $collectionSlug): ?array
+    {
+        $user = $this->userRepository->findOneBy(['username' => $username]);
+
+        if ($user === null || !$user->isPublic()) {
+            return null;
+        }
+
+        // Find collection by matching slug
+        $collections = $this->collectionRepository->findBy(['user' => $user, 'isPublic' => true]);
+        $collection = null;
+        foreach ($collections as $c) {
+            if ($c->getSlug() === $collectionSlug) {
+                $collection = $c;
+                break;
+            }
+        }
+
+        if ($collection === null) {
+            return null;
+        }
+
+        // Get public watches in this collection
+        $watches = $collection->getProductWatches()->filter(
+            fn(ProductWatch $pw) => $pw->isPublic() && $pw->isActive()
+        )->toArray();
+
+        return [
+            'username' => $user->getUsername(),
+            'collection' => [
+                'name' => $collection->getName(),
+                'slug' => $collection->getSlug(),
+                'description' => $collection->getDescription(),
+            ],
             'productCount' => count($watches),
             'products' => array_map(fn(ProductWatch $w) => $this->formatProduct($w), $watches),
         ];

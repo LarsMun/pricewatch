@@ -39,9 +39,28 @@ export interface FeedResponse {
   totalPages: number
 }
 
+export interface PublicCollection {
+  name: string
+  slug: string
+  description: string | null
+  productCount: number
+}
+
 export interface UserProfile {
   username: string
   memberSince: string
+  productCount: number
+  products: PublicProduct[]
+  collections?: PublicCollection[]
+}
+
+export interface UserCollectionResponse {
+  username: string
+  collection: {
+    name: string
+    slug: string
+    description: string | null
+  }
   productCount: number
   products: PublicProduct[]
 }
@@ -123,6 +142,14 @@ export function useUserProfile(username: string) {
     queryKey: ['public-user', username],
     queryFn: () => api.get<{ user: UserProfile }>(`/api/public/users/${username}`),
     enabled: !!username,
+  })
+}
+
+export function useUserCollection(username: string, collectionSlug: string) {
+  return useQuery({
+    queryKey: ['public-user-collection', username, collectionSlug],
+    queryFn: () => api.get<UserCollectionResponse>(`/api/public/users/${username}/collections/${collectionSlug}`),
+    enabled: !!username && !!collectionSlug,
   })
 }
 

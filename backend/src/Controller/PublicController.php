@@ -94,6 +94,18 @@ class PublicController extends AbstractController
         return $this->json(['user' => $profile]);
     }
 
+    #[Route('/users/{username}/collections/{slug}', name: 'api_public_user_collection', methods: ['GET'])]
+    public function userCollection(string $username, string $slug): JsonResponse
+    {
+        $collection = $this->feedService->getUserCollection($username, $slug);
+
+        if ($collection === null) {
+            return $this->json(['error' => 'Collectie niet gevonden'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json($collection);
+    }
+
     #[Route('/subscribe', name: 'api_public_subscribe', methods: ['POST'])]
     public function subscribe(Request $request, ValidatorInterface $validator): JsonResponse
     {
