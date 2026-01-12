@@ -13,6 +13,7 @@ import { useWatches } from '../hooks/useWatches'
 import { useCollections } from '../hooks/useCollections'
 import SubscribeModal from '../components/SubscribeModal'
 import CategorySidebar from '../components/CategorySidebar'
+import { SEO, createWebSiteSchema, createItemListSchema } from '../components/SEO'
 import type { ProductWatch } from '../types'
 
 function ProductCard({
@@ -231,8 +232,60 @@ export default function FeedPage() {
 
   const isShowingMyWatches = myWatchesFilter !== null
 
+  // Generate JSON-LD for SEO
+  const jsonLd = useMemo(() => {
+    if (isShowingMyWatches) return null
+
+    const schemas = [createWebSiteSchema()]
+    if (displayProducts.length > 0) {
+      const categoryName = selectedCategory
+        ? categoriesData?.categories.find(c => c.slug === selectedCategory)?.name
+        : undefined
+      const listName = categoryName
+        ? `${categoryName} producten`
+        : selectedDomain
+          ? `Producten van ${selectedDomain}`
+          : 'Populaire producten'
+      schemas.push(createItemListSchema(displayProducts, listName))
+    }
+    return schemas
+  }, [isShowingMyWatches, displayProducts, selectedCategory, selectedDomain, categoriesData])
+
+  // Generate page title and description for SEO
+  const pageTitle = useMemo(() => {
+    if (selectedCategory) {
+      const category = categoriesData?.categories.find(c => c.slug === selectedCategory)
+      return category ? `${category.name} prijzen vergelijken` : undefined
+    }
+    if (selectedDomain) {
+      return `${selectedDomain} prijzen volgen`
+    }
+    return undefined
+  }, [selectedCategory, selectedDomain, categoriesData])
+
+  const pageDescription = useMemo(() => {
+    if (selectedCategory) {
+      const category = categoriesData?.categories.find(c => c.slug === selectedCategory)
+      return category
+        ? `Vergelijk ${category.name.toLowerCase()} prijzen en ontvang alerts bij prijsdalingen. Volg ${feedData?.totalCount || 0} producten.`
+        : undefined
+    }
+    if (selectedDomain) {
+      return `Volg ${selectedDomain} prijzen en ontvang meldingen bij kortingen. ${feedData?.totalCount || 0} producten beschikbaar.`
+    }
+    return undefined
+  }, [selectedCategory, selectedDomain, categoriesData, feedData])
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title={pageTitle}
+        description={pageDescription}
+        canonicalUrl={`https://shopq.nl${selectedCategory ? `/?category=${selectedCategory}` : selectedDomain ? `/?domain=${selectedDomain}` : ''}`}
+        jsonLd={jsonLd || undefined}
+        noIndex={isShowingMyWatches}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

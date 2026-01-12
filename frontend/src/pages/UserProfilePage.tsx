@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useUserProfile, type PublicProduct } from '../hooks/usePublicFeed'
 import { useAuth } from '../contexts/AuthContext'
 import SubscribeModal from '../components/SubscribeModal'
+import { SEO } from '../components/SEO'
 
 export default function UserProfilePage() {
   const { username } = useParams<{ username: string }>()
@@ -59,6 +60,12 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title={`@${profile.username} - Producten`}
+        description={`Bekijk de ${profile.productCount} producten die @${profile.username} volgt op ShopQ. Stel prijsalerts in voor dezelfde producten.`}
+        canonicalUrl={`https://shopq.nl/u/${profile.username}`}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">

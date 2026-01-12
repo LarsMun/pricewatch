@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { usePublicProduct } from '../hooks/usePublicFeed'
 import { useAuth } from '../contexts/AuthContext'
 import SubscribeModal from '../components/SubscribeModal'
+import { SEO, createProductSchema, createBreadcrumbSchema } from '../components/SEO'
 
 export default function PublicProductPage() {
   const { id } = useParams<{ id: string }>()
@@ -65,8 +66,47 @@ export default function PublicProductPage() {
         ).toFixed(1)
       : null
 
+  // Generate JSON-LD for SEO
+  const jsonLd = useMemo(() => {
+    return [
+      createProductSchema({
+        id: product.id,
+        productName: product.productName,
+        url: product.url,
+        imageUrl: product.imageUrl,
+        currentPrice: product.currentPrice,
+        currency: product.currency || 'EUR',
+      }),
+      createBreadcrumbSchema([
+        { name: 'Home', url: 'https://shopq.nl' },
+        { name: product.domain, url: `https://shopq.nl/?domain=${product.domain}` },
+        { name: product.productName, url: `https://shopq.nl/product/${product.id}` },
+      ]),
+    ]
+  }, [product])
+
+  // Generate description for SEO
+  const description = useMemo(() => {
+    const parts = [`${product.productName} voor €${product.currentPrice}`]
+    if (priceChange && parseFloat(priceChange) < 0) {
+      parts.push(`(${priceChange}% korting)`)
+    }
+    parts.push(`bij ${product.domain}.`)
+    parts.push('Volg de prijs en ontvang een melding bij prijsdaling.')
+    return parts.join(' ')
+  }, [product, priceChange])
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title={product.productName}
+        description={description}
+        canonicalUrl={`https://shopq.nl/product/${product.id}`}
+        ogImage={product.imageUrl || undefined}
+        ogType="product"
+        jsonLd={jsonLd}
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
