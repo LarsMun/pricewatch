@@ -11,6 +11,49 @@ export default function PublicProductPage() {
   const { data, isLoading, error } = usePublicProduct(Number(id))
   const [showSubscribe, setShowSubscribe] = useState(false)
 
+  const product = data?.product
+
+  const priceChange =
+    product?.previousPrice && product?.currentPrice
+      ? (
+          ((parseFloat(product.currentPrice) - parseFloat(product.previousPrice)) /
+            parseFloat(product.previousPrice)) *
+          100
+        ).toFixed(1)
+      : null
+
+  // Generate JSON-LD for SEO (must be before early returns)
+  const jsonLd = useMemo(() => {
+    if (!product) return null
+    return [
+      createProductSchema({
+        id: product.id,
+        productName: product.productName,
+        url: product.url,
+        imageUrl: product.imageUrl,
+        currentPrice: product.currentPrice,
+        currency: product.currency || 'EUR',
+      }),
+      createBreadcrumbSchema([
+        { name: 'Home', url: 'https://shopq.nl' },
+        { name: product.domain, url: `https://shopq.nl/?domain=${product.domain}` },
+        { name: product.productName, url: `https://shopq.nl/product/${product.id}` },
+      ]),
+    ]
+  }, [product])
+
+  // Generate description for SEO (must be before early returns)
+  const description = useMemo(() => {
+    if (!product) return ''
+    const parts = [`${product.productName} voor €${product.currentPrice}`]
+    if (priceChange && parseFloat(priceChange) < 0) {
+      parts.push(`(${priceChange}% korting)`)
+    }
+    parts.push(`bij ${product.domain}.`)
+    parts.push('Volg de prijs en ontvang een melding bij prijsdaling.')
+    return parts.join(' ')
+  }, [product, priceChange])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -33,7 +76,7 @@ export default function PublicProductPage() {
     )
   }
 
-  if (error || !data?.product) {
+  if (error || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-200">
@@ -56,46 +99,6 @@ export default function PublicProductPage() {
     )
   }
 
-  const product = data.product
-  const priceChange =
-    product.previousPrice && product.currentPrice
-      ? (
-          ((parseFloat(product.currentPrice) - parseFloat(product.previousPrice)) /
-            parseFloat(product.previousPrice)) *
-          100
-        ).toFixed(1)
-      : null
-
-  // Generate JSON-LD for SEO
-  const jsonLd = useMemo(() => {
-    return [
-      createProductSchema({
-        id: product.id,
-        productName: product.productName,
-        url: product.url,
-        imageUrl: product.imageUrl,
-        currentPrice: product.currentPrice,
-        currency: product.currency || 'EUR',
-      }),
-      createBreadcrumbSchema([
-        { name: 'Home', url: 'https://shopq.nl' },
-        { name: product.domain, url: `https://shopq.nl/?domain=${product.domain}` },
-        { name: product.productName, url: `https://shopq.nl/product/${product.id}` },
-      ]),
-    ]
-  }, [product])
-
-  // Generate description for SEO
-  const description = useMemo(() => {
-    const parts = [`${product.productName} voor €${product.currentPrice}`]
-    if (priceChange && parseFloat(priceChange) < 0) {
-      parts.push(`(${priceChange}% korting)`)
-    }
-    parts.push(`bij ${product.domain}.`)
-    parts.push('Volg de prijs en ontvang een melding bij prijsdaling.')
-    return parts.join(' ')
-  }, [product, priceChange])
-
   return (
     <div className="min-h-screen bg-gray-50">
       <SEO
@@ -104,7 +107,7 @@ export default function PublicProductPage() {
         canonicalUrl={`https://shopq.nl/product/${product.id}`}
         ogImage={product.imageUrl || undefined}
         ogType="product"
-        jsonLd={jsonLd}
+        jsonLd={jsonLd || undefined}
       />
 
       {/* Header */}
