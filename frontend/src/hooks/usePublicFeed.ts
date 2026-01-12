@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../api/client'
+import type { Category, CategoryInfo } from '../types'
 
 export interface PublicProduct {
   id: number
@@ -14,6 +15,7 @@ export interface PublicProduct {
   subscriberCount: number
   createdAt: string
   username?: string
+  category?: CategoryInfo
   lastPriceChange?: {
     type: 'price_decrease' | 'price_increase'
     oldPrice: string
@@ -48,18 +50,46 @@ export interface DomainsResponse {
   domains: Record<string, number>
 }
 
-export function usePublicFeed(page: number = 1, limit: number = 24, domain?: string) {
+export type SortOption = 'popular' | 'price_drop' | 'newest' | 'price_low' | 'price_high'
+
+export const SORT_OPTIONS: Record<SortOption, string> = {
+  popular: 'Populairste',
+  price_drop: 'Grootste prijsdaling',
+  newest: 'Nieuwste',
+  price_low: 'Prijs laag-hoog',
+  price_high: 'Prijs hoog-laag',
+}
+
+export function usePublicFeed(
+  page: number = 1,
+  limit: number = 24,
+  domain?: string,
+  category?: string,
+  sort: SortOption = 'popular'
+) {
   const queryParams = new URLSearchParams({
     page: String(page),
     limit: String(limit),
+    sort,
   })
   if (domain) {
     queryParams.set('domain', domain)
   }
+  if (category) {
+    queryParams.set('category', category)
+  }
 
   return useQuery({
-    queryKey: ['public-feed', page, limit, domain],
+    queryKey: ['public-feed', page, limit, domain, category, sort],
     queryFn: () => api.get<FeedResponse>(`/api/public/feed?${queryParams}`),
+  })
+}
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ['public-categories'],
+    queryFn: () => api.get<{ categories: Category[] }>('/api/public/categories'),
+    staleTime: 5 * 60 * 1000, // 5 minutes - categories rarely change
   })
 }
 

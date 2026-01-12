@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Repository\CategoryRepository;
 use App\Service\EmailSubscriberService;
 use App\Service\PublicFeedService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,6 +20,7 @@ class PublicController extends AbstractController
     public function __construct(
         private readonly PublicFeedService $feedService,
         private readonly EmailSubscriberService $subscriberService,
+        private readonly CategoryRepository $categoryRepository,
         private readonly RateLimiterFactory $subscribeEndpointLimiter,
     ) {
     }
@@ -29,10 +31,25 @@ class PublicController extends AbstractController
         $page = max(1, (int) $request->query->get('page', 1));
         $limit = min(48, max(1, (int) $request->query->get('limit', 24)));
         $domain = $request->query->get('domain');
+        $categorySlug = $request->query->get('category');
+        $sort = $request->query->get('sort', 'popular');
 
-        $result = $this->feedService->getFeed($page, $limit, $domain);
+        // Validate sort option
+        if (!array_key_exists($sort, PublicFeedService::SORT_OPTIONS)) {
+            $sort = 'popular';
+        }
+
+        $result = $this->feedService->getFeed($page, $limit, $domain, $categorySlug, $sort);
 
         return $this->json($result);
+    }
+
+    #[Route('/categories', name: 'api_public_categories', methods: ['GET'])]
+    public function categories(): JsonResponse
+    {
+        $categories = $this->categoryRepository->getCategoryTreeWithCounts();
+
+        return $this->json(['categories' => $categories]);
     }
 
     #[Route('/feed/recent-changes', name: 'api_public_recent_changes', methods: ['GET'])]

@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { usePublicFeed, usePopularDomains, type PublicProduct } from '../hooks/usePublicFeed'
+import {
+  usePublicFeed,
+  usePopularDomains,
+  useCategories,
+  SORT_OPTIONS,
+  type PublicProduct,
+  type SortOption,
+} from '../hooks/usePublicFeed'
 import { useAuth } from '../contexts/AuthContext'
+import { useWatches } from '../hooks/useWatches'
+import { useCollections } from '../hooks/useCollections'
 import SubscribeModal from '../components/SubscribeModal'
+import CategorySidebar from '../components/CategorySidebar'
+import type { ProductWatch } from '../types'
 
 function ProductCard({
   product,
@@ -67,6 +78,13 @@ function ProductCard({
 
         <p className="text-xs text-gray-500 mt-1">{product.domain}</p>
 
+        {product.category && (
+          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+            {product.category.icon && <span>{product.category.icon}</span>}
+            {product.category.name}
+          </span>
+        )}
+
         <div className="mt-2 flex items-baseline gap-2">
           {product.currentPrice && (
             <span className="text-xl font-bold text-gray-900">&euro; {product.currentPrice}</span>
@@ -112,14 +130,106 @@ function ProductCard({
   )
 }
 
+// Convert user's ProductWatch to PublicProduct format for unified display
+function watchToPublicProduct(watch: ProductWatch): PublicProduct {
+  return {
+    id: watch.id,
+    productName: watch.productName || watch.domain,
+    url: watch.url,
+    domain: watch.domain,
+    imageUrl: watch.imageUrl,
+    currentPrice: watch.currentPrice,
+    previousPrice: watch.previousPrice,
+    originalPrice: watch.originalPrice,
+    currency: watch.currency,
+    subscriberCount: 0,
+    createdAt: watch.createdAt,
+  }
+}
+
 export default function FeedPage() {
   const { user } = useAuth()
   const [page, setPage] = useState(1)
   const [selectedDomain, setSelectedDomain] = useState<string | undefined>()
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>()
+  const [selectedSort, setSelectedSort] = useState<SortOption>('popular')
   const [subscribeProduct, setSubscribeProduct] = useState<PublicProduct | null>(null)
 
-  const { data: feedData, isLoading, error } = usePublicFeed(page, 24, selectedDomain)
+  // My watches filter state: null = public feed, 'all' = all my watches, number = specific collection
+  const [myWatchesFilter, setMyWatchesFilter] = useState<'all' | number | null>(null)
+  const [myWatchesExpanded, setMyWatchesExpanded] = useState(false)
+
+  const { data: feedData, isLoading, error } = usePublicFeed(page, 24, selectedDomain, selectedCategory, selectedSort)
   const { data: domainsData } = usePopularDomains()
+  const { data: categoriesData } = useCategories()
+
+  // User's watches and collections (only fetched when logged in)
+  const { data: myWatches } = useWatches()
+  const { data: myCollections } = useCollections()
+
+  // Filter user's watches based on selected collection
+  const filteredMyWatches = useMemo(() => {
+    if (!myWatches || myWatchesFilter === null) return []
+
+    if (myWatchesFilter === 'all') {
+      return myWatches
+    }
+
+    // Filter by collection ID
+    return myWatches.filter(w => w.collectionIds?.includes(myWatchesFilter as number))
+  }, [myWatches, myWatchesFilter])
+
+  // Helper to calculate price drop percentage
+  const getPriceDropPercent = (product: PublicProduct): number => {
+    if (!product.previousPrice || !product.currentPrice) return 0
+    const prev = parseFloat(product.previousPrice)
+    const curr = parseFloat(product.currentPrice)
+    if (prev <= 0 || curr >= prev) return 0
+    return ((prev - curr) / prev) * 100
+  }
+
+  // Products to display: either user's watches or public feed
+  const displayProducts = useMemo((): PublicProduct[] => {
+    let products: PublicProduct[]
+
+    if (myWatchesFilter !== null) {
+      products = filteredMyWatches.map(watchToPublicProduct)
+
+      // Apply client-side sorting for my watches
+      switch (selectedSort) {
+        case 'price_drop':
+          products = products
+            .filter(p => getPriceDropPercent(p) > 0)
+            .sort((a, b) => getPriceDropPercent(b) - getPriceDropPercent(a))
+          break
+        case 'newest':
+          products = [...products].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          break
+        case 'price_low':
+          products = [...products].sort(
+            (a, b) => parseFloat(a.currentPrice || '0') - parseFloat(b.currentPrice || '0')
+          )
+          break
+        case 'price_high':
+          products = [...products].sort(
+            (a, b) => parseFloat(b.currentPrice || '0') - parseFloat(a.currentPrice || '0')
+          )
+          break
+        case 'popular':
+        default:
+          products = [...products].sort((a, b) => b.subscriberCount - a.subscriberCount)
+          break
+      }
+    } else {
+      products = feedData?.products || []
+    }
+
+    return products
+  }, [myWatchesFilter, filteredMyWatches, feedData, selectedSort])
+
+  const isShowingMyWatches = myWatchesFilter !== null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,40 +277,201 @@ export default function FeedPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
-          <aside className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sticky top-4">
-              <h2 className="font-semibold text-gray-900 mb-3">Webshops</h2>
-              <button
-                onClick={() => setSelectedDomain(undefined)}
-                className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
-                  !selectedDomain ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Alle webshops
-              </button>
-              {domainsData?.domains &&
-                Object.entries(domainsData.domains)
-                  .slice(0, 10)
-                  .map(([domain, count]) => (
-                    <button
-                      key={domain}
-                      onClick={() => setSelectedDomain(domain)}
-                      className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
-                        selectedDomain === domain
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+          <aside className="lg:w-64 flex-shrink-0 space-y-4">
+            <div className="sticky top-4 space-y-4">
+              {/* My Watches - only for logged in users */}
+              {user && myWatches && myWatches.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <button
+                    onClick={() => setMyWatchesExpanded(!myWatchesExpanded)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span className="font-semibold text-gray-900">Mijn Watches</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {myWatches.length}
+                      </span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-gray-400 transition-transform ${myWatchesExpanded ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {domain}{' '}
-                      <span className="text-gray-400">({count})</span>
-                    </button>
-                  ))}
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {myWatchesExpanded && (
+                    <div className="mt-3 space-y-1">
+                      {/* All my watches */}
+                      <button
+                        onClick={() => {
+                          setMyWatchesFilter(myWatchesFilter === 'all' ? null : 'all')
+                          setSelectedCategory(undefined)
+                          setSelectedDomain(undefined)
+                          setPage(1)
+                        }}
+                        className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
+                          myWatchesFilter === 'all'
+                            ? 'bg-blue-50 text-blue-700 font-medium'
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        Alle watches
+                      </button>
+
+                      {/* Collections */}
+                      {myCollections && myCollections.length > 0 && (
+                        <>
+                          <div className="text-xs text-gray-400 uppercase tracking-wide px-3 pt-2">
+                            Collecties
+                          </div>
+                          {myCollections.map((collection) => {
+                            const watchCount = myWatches.filter(w =>
+                              w.collectionIds?.includes(collection.id)
+                            ).length
+                            return (
+                              <button
+                                key={collection.id}
+                                onClick={() => {
+                                  setMyWatchesFilter(myWatchesFilter === collection.id ? null : collection.id)
+                                  setSelectedCategory(undefined)
+                                  setSelectedDomain(undefined)
+                                  setPage(1)
+                                }}
+                                className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
+                                  myWatchesFilter === collection.id
+                                    ? 'bg-blue-50 text-blue-700 font-medium'
+                                    : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                {collection.name}
+                                <span className="text-gray-400 ml-1">({watchCount})</span>
+                              </button>
+                            )
+                          })}
+                        </>
+                      )}
+
+                      {/* Back to public feed link */}
+                      {myWatchesFilter !== null && (
+                        <button
+                          onClick={() => setMyWatchesFilter(null)}
+                          className="block w-full text-left px-3 py-2 text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          ← Terug naar alle producten
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Categories */}
+              {categoriesData?.categories && (
+                <CategorySidebar
+                  categories={categoriesData.categories}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={(slug) => {
+                    setSelectedCategory(slug)
+                    setMyWatchesFilter(null)
+                    setPage(1)
+                  }}
+                />
+              )}
+
+              {/* Domains - only show when viewing public feed */}
+              {!isShowingMyWatches && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <h2 className="font-semibold text-gray-900 mb-3">Webshops</h2>
+                  <button
+                    onClick={() => {
+                      setSelectedDomain(undefined)
+                      setPage(1)
+                    }}
+                    className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
+                      !selectedDomain ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Alle webshops
+                  </button>
+                  {domainsData?.domains &&
+                    Object.entries(domainsData.domains)
+                      .slice(0, 10)
+                      .map(([domain, count]) => (
+                        <button
+                          key={domain}
+                          onClick={() => {
+                            setSelectedDomain(domain)
+                            setPage(1)
+                          }}
+                          className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
+                            selectedDomain === domain
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {domain}{' '}
+                          <span className="text-gray-400">({count})</span>
+                        </button>
+                      ))}
+                </div>
+              )}
             </div>
           </aside>
 
           {/* Main content */}
           <main className="flex-1">
-            {isLoading ? (
+            {/* Header with filter info and sort */}
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {isShowingMyWatches ? (
+                  <>
+                    <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                      {myWatchesFilter === 'all'
+                        ? 'Mijn Watches'
+                        : myCollections?.find(c => c.id === myWatchesFilter)?.name || 'Collectie'}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {displayProducts.length} {displayProducts.length === 1 ? 'product' : 'producten'}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-500">
+                    {feedData?.totalCount || 0} producten
+                  </span>
+                )}
+              </div>
+
+              {/* Sort dropdown */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="sort" className="text-sm text-gray-500">
+                  Sorteer op:
+                </label>
+                <select
+                  id="sort"
+                  value={selectedSort}
+                  onChange={(e) => {
+                    setSelectedSort(e.target.value as SortOption)
+                    setPage(1)
+                  }}
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {!isShowingMyWatches && isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <svg
                   className="animate-spin w-8 h-8 text-blue-600"
@@ -222,11 +493,11 @@ export default function FeedPage() {
                   />
                 </svg>
               </div>
-            ) : error ? (
+            ) : !isShowingMyWatches && error ? (
               <div className="text-center py-12">
                 <p className="text-red-600">{error.message}</p>
               </div>
-            ) : feedData?.products.length === 0 ? (
+            ) : displayProducts.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg
@@ -243,29 +514,36 @@ export default function FeedPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nog geen producten</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {isShowingMyWatches ? 'Geen watches in deze collectie' : 'Nog geen producten'}
+                </h3>
                 <p className="text-gray-500 mb-4">
-                  {selectedDomain
-                    ? `Geen producten gevonden voor ${selectedDomain}`
-                    : 'Wees de eerste om een product toe te voegen!'}
+                  {isShowingMyWatches
+                    ? 'Voeg watches toe aan deze collectie vanuit je dashboard.'
+                    : selectedDomain || selectedCategory
+                      ? `Geen producten gevonden${selectedCategory ? ` in deze categorie` : ''}${selectedDomain ? ` voor ${selectedDomain}` : ''}`
+                      : 'Wees de eerste om een product toe te voegen!'}
                 </p>
-                <Link
-                  to="/register"
-                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Maak een account
-                </Link>
+                {isShowingMyWatches ? (
+                  <Link
+                    to="/dashboard"
+                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Naar dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/register"
+                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Maak een account
+                  </Link>
+                )}
               </div>
             ) : (
               <>
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm text-gray-500">
-                    {feedData?.totalCount} producten gevonden
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {feedData?.products.map((product) => (
+                  {displayProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
@@ -274,8 +552,8 @@ export default function FeedPage() {
                   ))}
                 </div>
 
-                {/* Pagination */}
-                {feedData && feedData.totalPages > 1 && (
+                {/* Pagination - only for public feed */}
+                {!isShowingMyWatches && feedData && feedData.totalPages > 1 && (
                   <div className="mt-8 flex justify-center gap-2">
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}

@@ -16,6 +16,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Index(columns: ['domain'], name: 'idx_domain')]
 #[ORM\Index(columns: ['is_active'], name: 'idx_active')]
 #[ORM\Index(columns: ['user_id', 'is_active'], name: 'idx_user_active')]
+#[ORM\Index(columns: ['category_id'], name: 'idx_category')]
 class ProductWatch
 {
     #[ORM\Id]
@@ -113,6 +114,10 @@ class ProductWatch
     /** @var Collection<int, \App\Entity\Collection> */
     #[ORM\ManyToMany(targetEntity: \App\Entity\Collection::class, mappedBy: 'productWatches')]
     private Collection $collections;
+
+    #[ORM\ManyToOne(targetEntity: Category::class, inversedBy: 'productWatches')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Category $category = null;
 
     public function __construct()
     {
@@ -497,6 +502,17 @@ class ProductWatch
         if ($this->subscriberCount > 0) {
             $this->subscriberCount--;
         }
+        return $this;
+    }
+
+    public function getCategory(): ?Category
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?Category $category): static
+    {
+        $this->category = $category;
         return $this;
     }
 }

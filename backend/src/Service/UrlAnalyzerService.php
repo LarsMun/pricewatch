@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Scraper\BrowserEngine;
 use App\Scraper\HttpEngine;
 use Symfony\Component\DomCrawler\Crawler;
 
@@ -19,6 +20,7 @@ class UrlAnalysisResult
         public readonly string $detectionMethod = 'none',
         public readonly array $availableSelectors = [],
         public readonly ?string $error = null,
+        public readonly ?string $jsonLdCategory = null,
     ) {}
 }
 
@@ -26,6 +28,7 @@ class UrlAnalyzerService
 {
     public function __construct(
         private HttpEngine $httpEngine,
+        private BrowserEngine $browserEngine,
         private UrlValidator $urlValidator,
     ) {}
 
@@ -37,7 +40,12 @@ class UrlAnalyzerService
 
             // Fetch the page
             $result = $this->httpEngine->fetch($url);
-            
+
+            // Fallback to browser engine on 403/429
+            if (!$result->success && in_array($result->httpStatus, [403, 429], true)) {
+                $result = $this->browserEngine->fetch($url);
+            }
+
             if (!$result->success) {
                 return new UrlAnalysisResult(
                     success: false,
@@ -63,6 +71,7 @@ class UrlAnalyzerService
                     priceSelector: 'jsonld:offers.price',
                     detectionMethod: 'jsonld',
                     availableSelectors: $this->buildAvailableSelectors($jsonLdData, $html),
+                    jsonLdCategory: $jsonLdData['category'] ?? null,
                 );
             }
 
@@ -137,12 +146,16 @@ class UrlAnalyzerService
                     }
                 }
 
+                // Extract category
+                $category = $this->extractCategory($item);
+
                 if ($name || $price) {
                     return [
                         'name' => $name,
                         'price' => $price,
                         'currency' => $currency,
                         'image' => $image,
+                        'category' => $category,
                     ];
                 }
             }
@@ -175,6 +188,36 @@ class UrlAnalyzerService
                 if (is_array($img) && isset($img['url'])) {
                     return $img['url'];
                 }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractCategory(array $item): ?string
+    {
+        $category = $item['category'] ?? null;
+
+        if (is_string($category)) {
+            return $category;
+        }
+
+        if (is_array($category)) {
+            // Could be array of strings or breadcrumb-like structure
+            if (isset($category['name'])) {
+                return $category['name'];
+            }
+            // Array of category names, join them
+            $names = [];
+            foreach ($category as $cat) {
+                if (is_string($cat)) {
+                    $names[] = $cat;
+                } elseif (is_array($cat) && isset($cat['name'])) {
+                    $names[] = $cat['name'];
+                }
+            }
+            if (!empty($names)) {
+                return implode(' > ', $names);
             }
         }
 

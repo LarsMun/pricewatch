@@ -137,6 +137,7 @@ export interface CreateWatchRequest {
   productName?: string
   currency?: string
   imageUrl?: string
+  jsonLdCategory?: string
 }
 
 export interface AnalyzeUrlResponse {
@@ -156,6 +157,7 @@ export interface AnalyzeUrlResponse {
     recommended?: boolean
   }>
   error?: string
+  jsonLdCategory?: string | null
 }
 
 export interface WatchDetailResponse extends ProductWatch {
@@ -183,4 +185,20 @@ export interface CreateCollectionRequest {
 export interface UpdateCollectionRequest {
   name?: string
   description?: string | null
+}
+
+export interface Category {
+  id: number
+  name: string
+  slug: string
+  icon: string | null
+  productCount: number
+  children: Category[]
+}
+
+export interface CategoryInfo {
+  id: number
+  name: string
+  slug: string
+  icon: string | null
 }

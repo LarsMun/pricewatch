@@ -94,6 +94,7 @@ export default function AddWatchModal({ isOpen, onClose }: AddWatchModalProps) {
         productName: productName.trim() || undefined,
         currency: currency,
         imageUrl: imageUrl.trim() || undefined,
+        jsonLdCategory: analysis?.jsonLdCategory || undefined,
       })
       handleClose()
     } catch (err) {

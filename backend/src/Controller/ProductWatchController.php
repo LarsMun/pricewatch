@@ -7,6 +7,7 @@ use App\Entity\User;
 use App\Message\CheckPriceMessage;
 use App\Repository\ProductWatchRepository;
 use App\Repository\PriceCheckRepository;
+use App\Service\CategoryService;
 use App\Service\PriceCheckService;
 use App\Service\UrlAnalyzerService;
 use App\Service\UrlValidator;
@@ -30,6 +31,7 @@ class ProductWatchController extends AbstractController
         private PriceCheckService $priceCheckService,
         private UrlAnalyzerService $urlAnalyzer,
         private UrlValidator $urlValidator,
+        private CategoryService $categoryService,
         private RateLimiterFactory $checkAllUserLimiter,
         private MessageBusInterface $messageBus,
     ) {}
@@ -89,6 +91,7 @@ class ProductWatchController extends AbstractController
             'priceSelector' => $result->priceSelector,
             'detectionMethod' => $result->detectionMethod,
             'availableSelectors' => $result->availableSelectors,
+            'jsonLdCategory' => $result->jsonLdCategory,
         ]);
     }
 
@@ -167,6 +170,18 @@ class ProductWatchController extends AbstractController
         }
         if (isset($data['imageUrl'])) {
             $watch->setImageUrl($data['imageUrl']);
+        }
+
+        // Auto-categorize the product
+        $jsonLdCategory = $data['jsonLdCategory'] ?? null;
+        $category = $this->categoryService->determineCategory(
+            $url,
+            $watch->getDomain(),
+            $watch->getProductName(),
+            $jsonLdCategory
+        );
+        if ($category !== null) {
+            $watch->setCategory($category);
         }
 
         $errors = $this->validator->validate($watch);
