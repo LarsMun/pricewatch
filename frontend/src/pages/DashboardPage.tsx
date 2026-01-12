@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCheckAllWatches, useWatches } from '../hooks/useWatches'
@@ -20,9 +20,6 @@ export default function DashboardPage() {
   const { data: watches } = useWatches()
   const { data: collections } = useCollections()
   const updateCollection = useUpdateCollection()
-  const [sharePopoverOpen, setSharePopoverOpen] = useState(false)
-  const [linkCopied, setLinkCopied] = useState(false)
-  const shareButtonRef = useRef<HTMLDivElement>(null)
 
   const selectedCollection = selectedCollectionId
     ? collections?.find(c => c.id === selectedCollectionId)
@@ -47,51 +44,38 @@ export default function DashboardPage() {
     }
   }, [checkAll.isSuccess])
 
-  // Close share popover when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (shareButtonRef.current && !shareButtonRef.current.contains(event.target as Node)) {
-        setSharePopoverOpen(false)
+  const handleShare = async () => {
+    if (!selectedCollection?.shareUrl) return
+
+    const shareUrl = window.location.origin + selectedCollection.shareUrl
+    const shareData = {
+      title: selectedCollection.name,
+      text: `Bekijk mijn collectie "${selectedCollection.name}" op ShopQ`,
+      url: shareUrl,
+    }
+
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData)
+      } catch (err) {
+        // User cancelled or share failed - fallback to clipboard
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareUrl)
+        }
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Reset link copied state when popover closes
-  useEffect(() => {
-    if (!sharePopoverOpen) {
-      setLinkCopied(false)
-    }
-  }, [sharePopoverOpen])
-
-  const handleShare = () => {
-    if (!selectedCollection) return
-
-    if (!selectedCollection.isPublic) {
-      // Make public first
-      updateCollection.mutate({
-        id: selectedCollection.id,
-        data: { isPublic: true }
-      })
-    }
-    setSharePopoverOpen(true)
-  }
-
-  const handleCopyLink = () => {
-    if (selectedCollection?.shareUrl) {
-      navigator.clipboard.writeText(window.location.origin + selectedCollection.shareUrl)
-      setLinkCopied(true)
+    } else {
+      // Fallback: copy to clipboard
+      await navigator.clipboard.writeText(shareUrl)
+      alert('Link gekopieerd naar klembord!')
     }
   }
 
-  const handleMakePrivate = () => {
+  const handleTogglePublic = () => {
     if (selectedCollection) {
       updateCollection.mutate({
         id: selectedCollection.id,
-        data: { isPublic: false }
+        data: { isPublic: !selectedCollection.isPublic }
       })
-      setSharePopoverOpen(false)
     }
   }
 
@@ -233,57 +217,49 @@ export default function DashboardPage() {
               </button>
             )}
             {selectedCollectionId && selectedCollection && (
-              <div className="relative" ref={shareButtonRef}>
+              <div className="flex items-center gap-2">
+                {/* Public/Private toggle */}
                 <button
-                  onClick={handleShare}
-                  className={`p-2 sm:px-4 sm:py-2 border rounded-lg transition flex items-center justify-center gap-2 ${
-                    selectedCollection.isPublic
-                      ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  onClick={handleTogglePublic}
+                  className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors ${
+                    selectedCollection.isPublic ? 'bg-green-500' : 'bg-gray-300'
                   }`}
-                  title={selectedCollection.isPublic ? 'Gedeeld' : 'Deel'}
+                  title={selectedCollection.isPublic ? 'Openbaar' : 'Privé'}
                 >
-                  {selectedCollection.isPublic ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                  )}
-                  <span className="hidden sm:inline">{selectedCollection.isPublic ? 'Gedeeld' : 'Deel'}</span>
-                </button>
-
-                {sharePopoverOpen && selectedCollection.isPublic && (
-                  <div className="absolute right-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 z-20 min-w-[280px]">
-                    <div className="text-sm font-medium text-gray-900 mb-2">Deel link</div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <input
-                        type="text"
-                        readOnly
-                        value={selectedCollection.shareUrl ? window.location.origin + selectedCollection.shareUrl : ''}
-                        className="flex-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-600"
-                      />
-                      <button
-                        onClick={handleCopyLink}
-                        className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm"
-                      >
-                        {linkCopied ? 'Gekopieerd!' : 'Kopieer'}
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleMakePrivate}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span
+                    className={`inline-block h-7 w-7 transform rounded-full bg-white shadow-md transition-transform flex items-center justify-center ${
+                      selectedCollection.isPublic ? 'translate-x-8' : 'translate-x-1'
+                    }`}
+                  >
+                    {selectedCollection.isPublic ? (
+                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                       </svg>
-                      Maak privé
-                    </button>
-                  </div>
-                )}
+                    )}
+                  </span>
+                </button>
+
+                {/* Share button - only enabled when public */}
+                <button
+                  onClick={handleShare}
+                  disabled={!selectedCollection.isPublic}
+                  className={`p-2 sm:px-4 sm:py-2 border rounded-lg transition flex items-center justify-center gap-2 ${
+                    selectedCollection.isPublic
+                      ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      : 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={selectedCollection.isPublic ? 'Deel collectie' : 'Maak eerst openbaar om te delen'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <span className="hidden sm:inline">Deel</span>
+                </button>
               </div>
             )}
             <button
