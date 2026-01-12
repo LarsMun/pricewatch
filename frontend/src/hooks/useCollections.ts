@@ -66,8 +66,16 @@ export function useUpdateCollection() {
       const response = await api.patch<CollectionMutationResponse>(`/api/collections/${id}`, data, token!)
       return response.collection
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    onSuccess: (updatedCollection, variables) => {
+      // Update the collection in the cache with server response (includes shareUrl)
+      const previousCollections = queryClient.getQueryData<Collection[]>(['collections'])
+      if (previousCollections) {
+        queryClient.setQueryData<Collection[]>(['collections'],
+          previousCollections.map(c =>
+            c.id === variables.id ? updatedCollection : c
+          )
+        )
+      }
       queryClient.invalidateQueries({ queryKey: ['collections', variables.id] })
     },
   })
