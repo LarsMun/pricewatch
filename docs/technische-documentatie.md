@@ -1,8 +1,8 @@
 # ShopQ - Technische Documentatie
 
-**Versie:** 3.2
-**Datum:** 8 Januari 2026
-**Status:** Production Ready (Fase 1-16)
+**Versie:** 4.0
+**Datum:** 20 Januari 2026
+**Status:** Production Ready (Fase 1-19)
 
 ---
 
@@ -202,6 +202,68 @@ getWatchCount(): int
 - Collecties zijn per gebruiker (user owns collection)
 - Verwijderen van collectie verwijdert NIET de watches
 - Watches blijven behouden als ze uit een collectie worden verwijderd
+- Collecties kunnen openbaar gedeeld worden via `isPublic` flag
+
+#### Category
+Hiërarchisch categoriesysteem voor productorganisatie.
+
+```php
+// Identificatie
+id: int (PK)
+parent: ?Category (self-referencing FK, SET NULL on delete)
+children: Collection<Category>
+
+// Metadata
+name: string (100 chars, NOT NULL)
+slug: string (100 chars, unique)
+icon: ?string (50 chars, emoji of icon class)
+sortOrder: int (default 0)
+
+// Relaties
+productWatches: OneToMany → ProductWatch
+
+// Methoden
+getPath(): string[]              // Volledig pad van root naar huidige categorie
+getAncestorIds(): int[]          // Alle parent IDs inclusief zelf
+getDescendantIds(): int[]        // Alle child IDs recursief inclusief zelf
+```
+
+**Kenmerken:**
+- Self-referencing voor hiërarchie (parent/children)
+- Automatische mapping via domein keywords (CategoryMappingConfig)
+- Wordt geseed via `app:seed-categories` command
+- Bestaande watches kunnen gecategoriseerd worden via `app:backfill-categories`
+
+#### EmailSubscriber
+Externe abonnees voor prijsalerts (niet-geregistreerde gebruikers).
+
+```php
+// Identificatie
+id: int (PK)
+email: string (180 chars, validated email)
+productWatch: ProductWatch (FK, CASCADE delete)
+
+// Verificatie
+isVerified: bool (default false)
+verificationToken: ?string (64 chars)
+verificationExpiresAt: ?DateTimeImmutable (24h expiry)
+unsubscribeToken: string (64 chars, auto-generated)
+
+// Metadata
+createdAt: DateTimeImmutable
+
+// Methoden
+generateVerificationToken()      // Genereert 64-char hex token + 24h expiry
+clearVerificationToken()         // Wist token na verificatie
+isVerificationTokenValid(token)  // Controleert token + expiry (timing-safe)
+verify()                         // Markeert als geverifieerd
+```
+
+**Kenmerken:**
+- Unique constraint op email + product_watch_id combinatie
+- Double opt-in vereist (email verificatie)
+- Unsubscribe token wordt automatisch gegenereerd bij aanmaak
+- Verhoogt `subscriberCount` op ProductWatch bij verificatie
 
 ---
 
@@ -269,6 +331,34 @@ getWatchCount(): int
 | DELETE | `/api/collections/{id}` | Collectie verwijderen |
 | POST | `/api/collections/{id}/watches/{watchId}` | Watch toevoegen aan collectie |
 | DELETE | `/api/collections/{id}/watches/{watchId}` | Watch verwijderen uit collectie |
+
+#### Public Feed (`PublicController`) - Geen authenticatie vereist
+
+| Method | Endpoint | Beschrijving |
+|--------|----------|--------------|
+| GET | `/api/public/feed` | Gepagineerde productfeed (page, limit, domain, category, sort) |
+| GET | `/api/public/feed/recent-changes` | Recente prijswijzigingen |
+| GET | `/api/public/feed/domains` | Populaire domeinen |
+| GET | `/api/public/categories` | Categorie tree met product counts |
+| GET | `/api/public/products/{id}` | Publiek productdetail met prijshistorie |
+| GET | `/api/public/users/{username}` | Publiek gebruikersprofiel |
+| GET | `/api/public/users/{username}/collections/{slug}` | Publieke collectie |
+| POST | `/api/public/subscribe` | Email abonneren op prijsalert |
+| POST | `/api/public/verify-subscription` | Abonnement bevestigen met token |
+| POST | `/api/public/unsubscribe` | Uitschrijven met unsubscribe token |
+
+**Feed sorteeropties:**
+- `popular` - Op aantal subscribers (default)
+- `newest` - Nieuwste eerst
+- `price_low` - Laagste prijs eerst
+- `price_high` - Hoogste prijs eerst
+- `discount` - Grootste korting eerst
+
+#### Sitemap (`SitemapController`)
+
+| Method | Endpoint | Beschrijving |
+|--------|----------|--------------|
+| GET | `/sitemap.xml` | XML sitemap voor SEO (publieke producten en gebruikers) |
 
 **Response formaten:**
 
@@ -444,6 +534,54 @@ validate(string $url): void  // throws InvalidArgumentException on unsafe URL
 - `BookmarkletController::validate()`
 - `UrlAnalyzerService::analyze()`
 
+#### PublicFeedService
+Queries voor de publieke productfeed.
+
+```php
+getFeed(page, limit, domain, categorySlug, sort): array   // Gepagineerde feed met filters
+getRecentPriceChanges(limit): array                       // Recente prijswijzigingen
+getPopularDomains(): array                                // Top domeinen met counts
+getProduct(id): ?array                                     // Productdetail met historie
+getUserProfile(username): ?array                          // Publiek profiel met watches
+getUserCollection(username, slug): ?array                 // Publieke collectie
+```
+
+**Kenmerken:**
+- Alleen `isPublic = true` producten worden getoond
+- Automatische prijsverandering berekening
+- Subscriber counts tracking
+- Category filtering via slugs
+
+#### EmailSubscriberService
+Beheer van externe prijsalert abonnementen.
+
+```php
+subscribe(email, productId): EmailSubscriber    // Nieuw abonnement aanmaken
+verify(token): ?EmailSubscriber                 // Abonnement bevestigen
+unsubscribe(token): bool                        // Uitschrijven
+notifySubscribers(watch, notification): void    // Subscribers notificeren
+```
+
+**Kenmerken:**
+- Double opt-in vereist
+- Rate limiting op subscribe endpoint (10/min per IP)
+- Automatische unsubscribe token generatie
+- Verhoogt ProductWatch subscriber count bij verificatie
+
+#### CategoryService
+Category operations en auto-categorisatie.
+
+```php
+getCategoryTree(): array                              // Volledige tree met counts
+assignCategory(ProductWatch $watch): void             // Auto-categoriseer op basis van domein
+getOrCreateBySlug(slug): ?Category                    // Ophalen of aanmaken
+```
+
+**Integratie:**
+- Gebruikt `CategoryMappingConfig` voor domein → category mapping
+- Wordt aangeroepen bij watch creatie
+- CLI command `app:backfill-categories` voor batch processing
+
 ---
 
 ### Scraper Engines
@@ -522,6 +660,12 @@ php bin/console app:check-prices --watch=123
 | `/bookmarklet` | BookmarkletPage | Bookmarklet instructies |
 | `/settings` | SettingsPage | Webhook instellingen (Discord/Slack) |
 | `/admin` | AdminPage | Admin dashboard (ROLE_ADMIN vereist) |
+| `/feed` | FeedPage | Publieke productfeed met filters |
+| `/product/:id` | PublicProductPage | Publiek productdetail |
+| `/u/:username` | UserProfilePage | Publiek gebruikersprofiel |
+| `/u/:username/:slug` | UserCollectionPage | Publieke collectie |
+| `/verify-subscription` | VerifySubscriptionPage | Email abonnement bevestigen |
+| `/unsubscribe` | UnsubscribePage | Uitschrijven van alerts |
 | `/privacy` | PrivacyPage | Privacybeleid (GDPR) |
 | `/terms` | TermsPage | Algemene voorwaarden |
 | `/contact` | ContactPage | Contactgegevens |
@@ -606,6 +750,27 @@ Aantrekkelijke empty state voor nieuwe gebruikers:
 - Link naar bookmarklet pagina
 - Tip over bookmarklet functionaliteit
 
+#### SEO
+Meta tags en JSON-LD structured data management:
+- Dynamische `<title>` en meta description
+- Open Graph tags voor social sharing
+- JSON-LD helpers voor Product, ItemList, BreadcrumbList, WebSite schemas
+- Gebruikt `react-helmet-async` voor head management
+
+#### CategorySidebar
+Categoriefilter voor de publieke feed:
+- Hiërarchische tree weergave
+- Product counts per categorie
+- Actieve categorie highlighting
+- URL-gebaseerde filtering
+
+#### SubscribeModal
+Email subscription form voor niet-ingelogde gebruikers:
+- Email validatie
+- Loading state tijdens verwerking
+- Success/error feedback
+- Uitleg over double opt-in
+
 ### Hooks (React Query)
 
 ```typescript
@@ -630,6 +795,18 @@ useUpdateCollection()          // Collectie updaten
 useDeleteCollection()          // Collectie verwijderen
 useAddWatchToCollection()      // Watch aan collectie toevoegen
 useRemoveWatchFromCollection() // Watch uit collectie verwijderen
+
+// Public Feed Queries
+usePublicFeed(page, filters)   // Gepagineerde feed
+usePublicProduct(id)           // Productdetail
+useUserProfile(username)       // Gebruikersprofiel
+useUserCollection(username, slug) // Publieke collectie
+useCategories()                // Category tree
+
+// Public Feed Mutations
+useSubscribe()                 // Email abonnement aanmaken
+useVerifySubscription()        // Abonnement bevestigen
+useUnsubscribe()               // Uitschrijven
 ```
 
 ### Auth Context
@@ -698,6 +875,7 @@ CREATE TABLE user (
 CREATE TABLE product_watch (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    category_id INT DEFAULT NULL,
     url VARCHAR(2048) NOT NULL,
     domain VARCHAR(255) NOT NULL,
     product_name VARCHAR(500),
@@ -711,12 +889,16 @@ CREATE TABLE product_watch (
     consecutive_failures INT DEFAULT 0,
     last_error_message VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
+    is_public BOOLEAN DEFAULT TRUE,
+    subscriber_count INT DEFAULT 0,
     next_check_at DATETIME NOT NULL,
     last_checked_at DATETIME,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL,
     INDEX idx_next_check (next_check_at),
-    INDEX idx_user_active (user_id, is_active)
+    INDEX idx_user_active (user_id, is_active),
+    INDEX idx_category (category_id)
 );
 
 -- Prijshistorie
@@ -753,6 +935,7 @@ CREATE TABLE collection (
     user_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
     description VARCHAR(1024),
+    is_public BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
@@ -766,6 +949,36 @@ CREATE TABLE collection_product_watch (
     PRIMARY KEY (collection_id, product_watch_id),
     FOREIGN KEY (collection_id) REFERENCES collection(id) ON DELETE CASCADE,
     FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE
+);
+
+-- Categorieën (hiërarchisch)
+CREATE TABLE category (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_id INT DEFAULT NULL,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    icon VARCHAR(50) DEFAULT NULL,
+    sort_order INT DEFAULT 0,
+    FOREIGN KEY (parent_id) REFERENCES category(id) ON DELETE SET NULL,
+    INDEX idx_category_parent (parent_id),
+    INDEX idx_category_slug (slug)
+);
+
+-- Email subscribers (externe prijsalert abonnees)
+CREATE TABLE email_subscriber (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(180) NOT NULL,
+    product_watch_id INT NOT NULL,
+    unsubscribe_token VARCHAR(64) NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_token VARCHAR(64) DEFAULT NULL,
+    verification_expires_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (product_watch_id) REFERENCES product_watch(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_email_watch (email, product_watch_id),
+    INDEX idx_subscriber_email (email),
+    INDEX idx_verification_token (verification_token),
+    INDEX idx_unsubscribe_token (unsubscribe_token)
 );
 ```
 
@@ -848,6 +1061,17 @@ CREATE TABLE collection_product_watch (
 - [x] PWA support met offline caching
 - [x] GitHub Actions CI/CD
 - [x] Docker production configuratie
+
+#### Public Feed & Discovery (Fase 17-19)
+- [x] Publieke productfeed met filtering en sortering
+- [x] Email subscriptions voor niet-ingelogde bezoekers
+- [x] Double opt-in email verificatie
+- [x] Hiërarchisch categoriesysteem
+- [x] Automatische product categorisatie
+- [x] Publieke gebruikersprofielen
+- [x] Publieke collectie sharing
+- [x] SEO ondersteuning (meta tags, JSON-LD, sitemap)
+- [x] Native Web Share API integratie
 
 ### Toekomstige uitbreidingen
 
@@ -1065,4 +1289,4 @@ De pipeline draait bij elke push/PR naar main:
 
 ---
 
-*Laatst bijgewerkt: 8 Januari 2026*
+*Laatst bijgewerkt: 20 Januari 2026*

@@ -1,6 +1,6 @@
 # ShopQ - Setup Voortgang
 
-> Laatst bijgewerkt: 2026-01-08
+> Laatst bijgewerkt: 2026-01-20
 
 ## Huidige Status: LIVE IN PRODUCTIE 🚀
 
@@ -504,6 +504,116 @@ De resterende MEDIUM prioriteit security items uit de remediation plan.
 - `backend/src/Controller/HealthController.php` - robots.txt endpoint
 - `backend/migrations/Version20260107120000.php` - Database indexes
 
+### Fase 17: Public Feed & Email Subscriptions ✅
+
+Pivot naar publieke productfeed: alle tracked producten zijn publiek zichtbaar, niet-geregistreerde bezoekers kunnen zich abonneren op prijsalerts.
+
+#### Backend Implementatie
+- [x] `PublicController` met feed endpoints (geen authenticatie vereist)
+  - `GET /api/public/feed` - Gepagineerde productfeed met filters
+  - `GET /api/public/feed/recent-changes` - Recente prijswijzigingen
+  - `GET /api/public/feed/domains` - Populaire domeinen
+  - `GET /api/public/products/{id}` - Publiek productdetail
+  - `GET /api/public/users/{username}` - Gebruikersprofiel
+  - `POST /api/public/subscribe` - Email abonneren op product
+  - `POST /api/public/verify-subscription` - Abonnement bevestigen
+  - `POST /api/public/unsubscribe` - Uitschrijven
+- [x] `EmailSubscriber` entity voor externe abonnees
+- [x] `EmailSubscriberService` voor subscription management
+- [x] `PublicFeedService` voor feed queries en caching
+- [x] Sorteeropties: populair (subscribers), nieuwste, prijs, grootste korting
+
+#### ProductWatch Uitbreidingen
+- [x] `isPublic` boolean veld (default true)
+- [x] `subscriberCount` integer veld
+- [x] `category` relatie naar Category entity
+
+#### Frontend Implementatie
+- [x] `FeedPage.tsx` - Publieke productfeed met filtering en sortering
+- [x] `PublicProductPage.tsx` - Productdetailpagina met prijshistorie
+- [x] `UserProfilePage.tsx` - Publiek gebruikersprofiel
+- [x] `VerifySubscriptionPage.tsx` - Email verificatie voor subscribers
+- [x] `UnsubscribePage.tsx` - Uitschrijven van alerts
+- [x] `SubscribeModal.tsx` - Email subscription form
+
+#### Database
+- [x] Migration voor `email_subscriber` tabel
+- [x] Migration voor `is_public` en `subscriber_count` op `product_watch`
+- [x] Indexes voor email en tokens
+
+### Fase 18: Category System ✅
+
+Hiërarchisch categoriesysteem voor betere productorganisatie in de feed.
+
+#### Backend Implementatie
+- [x] `Category` entity met parent/child relaties (self-referencing)
+- [x] `CategoryRepository` met tree queries en count aggregaties
+- [x] `CategoryService` voor category operations
+- [x] `CategoryMappingConfig` met domein → category mapping rules
+- [x] CLI Commands:
+  - `app:seed-categories` - Initiële categorieën laden
+  - `app:backfill-categories` - Bestaande watches categoriseren
+
+#### Category Entity
+```php
+id: int (PK)
+parent: ?Category (self-referencing FK)
+children: Collection<Category>
+name: string (100 chars)
+slug: string (100 chars, unique)
+icon: ?string (50 chars, emoji of icon class)
+sortOrder: int (default 0)
+productWatches: Collection<ProductWatch>
+```
+
+#### Frontend Implementatie
+- [x] `CategorySidebar.tsx` - Categoriefilter in feed
+- [x] Category badges op productcards
+- [x] URL-gebaseerde filtering (`/feed?category=meubels`)
+
+#### Standaard Categorieën
+- Wonen (meubels, verlichting, decoratie, opbergen)
+- Electronica (computers, audio, gaming, smartphones)
+- Tuin (tuinmeubels, planten, gereedschap)
+- Keuken (apparatuur, servies, kookgerei)
+- Sport & Vrije tijd
+- Mode
+- Overig
+
+### Fase 19: SEO & Public Collection Sharing ✅
+
+SEO-ondersteuning en uitgebreide deelmogelijkheden voor collecties.
+
+#### SEO Implementatie
+- [x] `react-helmet-async` voor dynamische meta tags
+- [x] `SEO.tsx` component met JSON-LD helpers
+- [x] `SitemapController` voor XML sitemap generatie
+- [x] JSON-LD schemas:
+  - Product schema voor productpagina's
+  - ItemList schema voor feed/lijstpagina's
+  - BreadcrumbList voor navigatie
+  - WebSite voor homepage
+
+#### Public Collection Sharing
+- [x] `isPublic` boolean op Collection entity
+- [x] `getSlug()` methode voor URL-vriendelijke naam
+- [x] `GET /api/public/users/{username}/collections/{slug}` endpoint
+- [x] `UserCollectionPage.tsx` - Publieke collectiepagina
+- [x] Share toggle in dashboard (oog-icoon)
+- [x] Native Web Share API integratie (`navigator.share()`)
+- [x] Fallback naar clipboard copy
+
+#### Commit History
+```
+1778e0f Fix scheduler missing FRONTEND_URL environment variable
+e0c336b Add changelog documentation for session 2026-01-12
+652ce4d Use native Web Share API for collection sharing
+de77269 Add public collection sharing feature
+3687d1a Add SEO support with JSON-LD structured data
+67c77e0 Add category system, sorting, and feed improvements
+9282cdc Pivot to public product feed with email subscriptions
+```
+
 ---
 
 ## Wat Nog Moet Gebeuren
@@ -566,13 +676,17 @@ shopq/
 │       │   ├── BookmarkletController.php
 │       │   ├── CollectionController.php  # Collecties API
 │       │   ├── AdminController.php   # Admin dashboard API
-│       │   └── HealthController.php  # Health check endpoint
+│       │   ├── HealthController.php  # Health check endpoint
+│       │   ├── PublicController.php  # Public feed & subscriptions
+│       │   └── SitemapController.php # SEO sitemap
 │       ├── Entity/
-│       │   ├── User.php              # +webhook fields, +collections
-│       │   ├── ProductWatch.php
+│       │   ├── User.php              # +webhook fields, +collections, +username
+│       │   ├── ProductWatch.php      # +isPublic, +subscriberCount, +category
 │       │   ├── PriceCheck.php
 │       │   ├── Notification.php
-│       │   └── Collection.php        # Collecties feature
+│       │   ├── Collection.php        # Collecties feature, +isPublic
+│       │   ├── Category.php          # Hiërarchisch categoriesysteem
+│       │   └── EmailSubscriber.php   # Externe prijsalert abonnees
 │       ├── Enum/
 │       ├── Message/
 │       │   └── CheckPriceMessage.php   # Async price check
@@ -594,7 +708,11 @@ shopq/
 │           ├── UrlAnalyzerService.php
 │           ├── UrlValidator.php
 │           ├── RobotsTxtChecker.php
-│           └── DomainRateLimiter.php
+│           ├── DomainRateLimiter.php
+│           ├── PublicFeedService.php      # Public feed queries
+│           ├── EmailSubscriberService.php # External subscriptions
+│           ├── CategoryService.php        # Category operations
+│           └── CategoryMappingConfig.php  # Domain → category mapping
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts              # PWA + code splitting
@@ -610,6 +728,10 @@ shopq/
 │       │   ├── VerificationBanner.tsx
 │       │   ├── CollectionTabs.tsx    # Collectie tab navigatie
 │       │   ├── CreateCollectionModal.tsx
+│       │   ├── ConfirmModal.tsx      # Herbruikbare confirm dialog
+│       │   ├── SEO.tsx               # Meta tags + JSON-LD
+│       │   ├── CategorySidebar.tsx   # Category filter in feed
+│       │   ├── SubscribeModal.tsx    # Email subscription form
 │       │   └── Footer.tsx
 │       ├── contexts/
 │       │   └── AuthContext.tsx
@@ -629,6 +751,12 @@ shopq/
 │       │   ├── ResetPasswordPage.tsx
 │       │   ├── SettingsPage.tsx      # Webhook configuratie
 │       │   ├── AdminPage.tsx         # Admin dashboard
+│       │   ├── FeedPage.tsx          # Public product feed
+│       │   ├── PublicProductPage.tsx # Public product detail
+│       │   ├── UserProfilePage.tsx   # Public user profile
+│       │   ├── UserCollectionPage.tsx # Public collection
+│       │   ├── VerifySubscriptionPage.tsx # Subscription verification
+│       │   ├── UnsubscribePage.tsx   # Unsubscribe from alerts
 │       │   ├── PrivacyPage.tsx
 │       │   ├── TermsPage.tsx
 │       │   └── ContactPage.tsx
