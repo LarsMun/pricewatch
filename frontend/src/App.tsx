@@ -6,6 +6,7 @@ import FeedPage from './pages/FeedPage'
 import PublicProductPage from './pages/PublicProductPage'
 import UserProfilePage from './pages/UserProfilePage'
 import UserCollectionPage from './pages/UserCollectionPage'
+import DiscoverPage from './pages/DiscoverPage'
 import VerifySubscriptionPage from './pages/VerifySubscriptionPage'
 import UnsubscribePage from './pages/UnsubscribePage'
 import LoginPage from './pages/LoginPage'
@@ -22,6 +23,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminPage from './pages/AdminPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   return (
@@ -34,6 +36,7 @@ function App() {
             <Route path="/product/:id" element={<PublicProductPage />} />
             <Route path="/u/:username" element={<UserProfilePage />} />
             <Route path="/u/:username/:slug" element={<UserCollectionPage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/verify-subscription" element={<VerifySubscriptionPage />} />
             <Route path="/unsubscribe" element={<UnsubscribePage />} />
 
@@ -91,11 +94,12 @@ function App() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="ROLE_ADMIN">
                   <AdminPage />
                 </ProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
         <Footer />

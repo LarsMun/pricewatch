@@ -20,7 +20,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class AuthController extends AbstractController
 {
     public function __construct(
-        private RateLimiterFactory $loginEndpointLimiter,
         private RateLimiterFactory $registrationEndpointLimiter,
         private RateLimiterFactory $passwordResetEndpointLimiter,
         private RateLimiterFactory $resendVerificationEndpointLimiter,

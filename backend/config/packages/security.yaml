@@ -22,6 +22,9 @@ security:
                 check_path: /api/login
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
 
         api:
             pattern: ^/api
@@ -29,7 +32,7 @@ security:
             jwt: ~
 
     access_control:
-        - { path: ^/api/doc, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc, roles: ROLE_ADMIN }
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
@@ -39,6 +42,9 @@ security:
         - { path: ^/api/bookmarklet, roles: PUBLIC_ACCESS }
         - { path: ^/api/watches/validate, roles: PUBLIC_ACCESS }
         - { path: ^/api/public, roles: PUBLIC_ACCESS }
+        - { path: ^/api/users/\d+/followers, roles: PUBLIC_ACCESS }
+        - { path: ^/api/users/\d+/following, roles: PUBLIC_ACCESS }
+        - { path: ^/api/discover, roles: PUBLIC_ACCESS }
         - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 

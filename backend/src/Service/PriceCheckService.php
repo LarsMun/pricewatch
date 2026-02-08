@@ -28,6 +28,7 @@ class PriceCheckService
         private NotificationService $notificationService,
         private DomainRateLimiter $rateLimiter,
         private RobotsTxtChecker $robotsChecker,
+        private UrlValidator $urlValidator,
     ) {}
 
     /**
@@ -58,6 +59,15 @@ class PriceCheckService
         $engineName = $watch->getCheckMethod()->value;
 
         $this->logger->info("Checking price for watch #{$watch->getId()} using {$engineName} engine: {$url}");
+
+        // Re-validate URL at check time to prevent TOCTOU SSRF (DNS may have changed since creation)
+        try {
+            $this->urlValidator->validate($url);
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->warning("URL failed SSRF validation for watch #{$watch->getId()}: {$e->getMessage()}");
+            $watch->pause();
+            return $this->createRateLimitedCheck($watch, 'URL blocked by security validation: ' . $e->getMessage());
+        }
 
         // Check robots.txt compliance
         if (!$this->robotsChecker->checkAndLog($url, self::USER_AGENT)) {

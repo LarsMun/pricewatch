@@ -8,6 +8,7 @@ vendor/
 .env.*.local
 .env.prod
 backend/.env
+backend/.env.dev
 backend/.env.local
 backend/.env.*.local
 

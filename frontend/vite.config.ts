@@ -64,8 +64,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Generate source maps for error tracking
-    sourcemap: true,
+    // Generate source maps for Sentry but don't serve them publicly
+    sourcemap: 'hidden',
     // Minification
     minify: 'terser',
     terserOptions: {

@@ -18,7 +18,7 @@ class HealthController extends AbstractController
             $em->getConnection()->executeQuery('SELECT 1');
             $dbStatus = 'ok';
         } catch (\Exception $e) {
-            $dbStatus = 'error: ' . $e->getMessage();
+            $dbStatus = 'error';
         }
 
         $status = $dbStatus === 'ok' ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE;

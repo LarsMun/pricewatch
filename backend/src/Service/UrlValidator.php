@@ -17,13 +17,9 @@ class UrlValidator
         '[::1]',
     ];
 
-    private const PRIVATE_RANGES = [
-        '10.0.0.0/8',
-        '172.16.0.0/12',
-        '192.168.0.0/16',
-        '127.0.0.0/8',
-        '169.254.0.0/16',
-        '0.0.0.0/8',
+    private const BLOCKED_HOSTS_IP = [
+        '0.0.0.0',
+        '::',
     ];
 
     /**
@@ -100,26 +96,20 @@ class UrlValidator
     }
 
     /**
-     * Check if IP is private, reserved, or loopback using CIDR notation.
+     * Check if IP is private, reserved, or loopback.
+     * Uses PHP's built-in filter_var which handles both IPv4 and IPv6.
      */
     private function isPrivateIp(string $ip): bool
     {
-        $ipLong = ip2long($ip);
-        if ($ipLong === false) {
-            return true; // Invalid IP, treat as private for safety
+        if (in_array($ip, self::BLOCKED_HOSTS_IP, true)) {
+            return true;
         }
 
-        foreach (self::PRIVATE_RANGES as $range) {
-            [$subnet, $mask] = explode('/', $range);
-            $subnetLong = ip2long($subnet);
-            $maskBits = (int) $mask;
-            $maskLong = $maskBits === 0 ? 0 : (~0 << (32 - $maskBits));
-
-            if (($ipLong & $maskLong) === ($subnetLong & $maskLong)) {
-                return true;
-            }
-        }
-
-        return false;
+        // filter_var returns false if the IP is private, reserved, or invalid
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
     }
 }
