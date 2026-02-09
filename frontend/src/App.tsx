@@ -6,6 +6,8 @@ import Footer from './components/Footer'
 
 // FeedPage loaded eagerly (landing page)
 import FeedPage from './pages/FeedPage'
+// NotFoundPage loaded eagerly (must always be available as fallback)
+import NotFoundPage from './pages/NotFoundPage'
 
 // All other pages loaded lazily
 const PublicProductPage = lazy(() => import('./pages/PublicProductPage'))
@@ -28,7 +30,6 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function PageSpinner() {
   return (
