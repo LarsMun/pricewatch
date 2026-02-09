@@ -47,9 +47,12 @@ export interface PublicCollection {
 }
 
 export interface UserProfile {
+  id: number
   username: string
   memberSince: string
   productCount: number
+  followerCount: number
+  followingCount: number
   products: PublicProduct[]
   collections?: PublicCollection[]
 }

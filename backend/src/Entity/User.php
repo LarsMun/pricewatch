@@ -63,6 +63,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $isPublic = true;
 
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $followerCount = 0;
+
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $followingCount = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -340,6 +346,62 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setIsPublic(bool $isPublic): static
     {
         $this->isPublic = $isPublic;
+
+        return $this;
+    }
+
+    public function getFollowerCount(): int
+    {
+        return $this->followerCount;
+    }
+
+    public function setFollowerCount(int $followerCount): static
+    {
+        $this->followerCount = $followerCount;
+
+        return $this;
+    }
+
+    public function incrementFollowerCount(): static
+    {
+        $this->followerCount++;
+
+        return $this;
+    }
+
+    public function decrementFollowerCount(): static
+    {
+        if ($this->followerCount > 0) {
+            $this->followerCount--;
+        }
+
+        return $this;
+    }
+
+    public function getFollowingCount(): int
+    {
+        return $this->followingCount;
+    }
+
+    public function setFollowingCount(int $followingCount): static
+    {
+        $this->followingCount = $followingCount;
+
+        return $this;
+    }
+
+    public function incrementFollowingCount(): static
+    {
+        $this->followingCount++;
+
+        return $this;
+    }
+
+    public function decrementFollowingCount(): static
+    {
+        if ($this->followingCount > 0) {
+            $this->followingCount--;
+        }
 
         return $this;
     }

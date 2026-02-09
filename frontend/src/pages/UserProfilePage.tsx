@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useUserProfile, type PublicProduct } from '../hooks/usePublicFeed'
 import { useAuth } from '../contexts/AuthContext'
 import SubscribeModal from '../components/SubscribeModal'
+import FollowButton from '../components/FollowButton'
 import { SEO } from '../components/SEO'
 
 export default function UserProfilePage() {
@@ -10,6 +11,7 @@ export default function UserProfilePage() {
   const { user } = useAuth()
   const { data, isLoading, error } = useUserProfile(username || '')
   const [subscribeProduct, setSubscribeProduct] = useState<PublicProduct | null>(null)
+  const [followerCount, setFollowerCount] = useState<number | null>(null)
 
   if (isLoading) {
     return (
@@ -69,24 +71,39 @@ export default function UserProfilePage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold text-blue-600">
-            ShopQ
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link to="/" className="text-2xl font-bold text-primary-600">
+              ShopQ
+            </Link>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link to="/" className="text-gray-600 hover:text-gray-900 font-medium">
+                Producten
+              </Link>
+              <Link to="/discover" className="text-gray-600 hover:text-gray-900 font-medium">
+                Ontdek
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-4">
             {user ? (
               <Link
                 to="/dashboard"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 Dashboard
               </Link>
             ) : (
-              <Link
-                to="/register"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Registreren
-              </Link>
+              <>
+                <Link to="/login" className="text-gray-600 hover:text-gray-900">
+                  Inloggen
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                >
+                  Registreren
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -105,27 +122,45 @@ export default function UserProfilePage() {
 
         {/* Profile Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-blue-600">
-                {profile.username.charAt(0).toUpperCase()}
-              </span>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+                <span className="text-2xl font-bold text-primary-600">
+                  {profile.username.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">@{profile.username}</h1>
+                <p className="text-gray-500">
+                  Lid sinds{' '}
+                  {new Date(profile.memberSince).toLocaleDateString('nl-NL', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">@{profile.username}</h1>
-              <p className="text-gray-500">
-                Lid sinds{' '}
-                {new Date(profile.memberSince).toLocaleDateString('nl-NL', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
-            </div>
+            <FollowButton
+              userId={profile.id}
+              username={profile.username}
+              initialFollowerCount={profile.followerCount}
+              onFollowerCountChange={setFollowerCount}
+            />
           </div>
           <div className="mt-4 flex gap-6 text-sm">
             <div>
               <span className="font-bold text-gray-900">{profile.productCount}</span>{' '}
               <span className="text-gray-500">producten</span>
+            </div>
+            <div>
+              <span className="font-bold text-gray-900">
+                {followerCount ?? profile.followerCount}
+              </span>{' '}
+              <span className="text-gray-500">volgers</span>
+            </div>
+            <div>
+              <span className="font-bold text-gray-900">{profile.followingCount}</span>{' '}
+              <span className="text-gray-500">volgend</span>
             </div>
           </div>
         </div>

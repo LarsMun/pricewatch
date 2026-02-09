@@ -289,9 +289,19 @@ export default function FeedPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold text-blue-600">
-            ShopQ
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link to="/" className="text-2xl font-bold text-blue-600">
+              ShopQ
+            </Link>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link to="/" className="text-gray-900 font-medium">
+                Producten
+              </Link>
+              <Link to="/discover" className="text-gray-600 hover:text-gray-900 font-medium">
+                Ontdek
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-4">
             {user ? (
               <Link

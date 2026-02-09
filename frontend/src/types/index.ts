@@ -8,6 +8,34 @@ export interface User {
   slackWebhookUrl: string | null
   username: string | null
   isPublic: boolean
+  followerCount: number
+  followingCount: number
+}
+
+export interface UserSummary {
+  id: number
+  username: string
+  followerCount: number
+  productCount: number
+  memberSince: string
+}
+
+export interface FollowersResponse {
+  followers: UserSummary[]
+  totalCount: number
+  page: number
+  totalPages: number
+}
+
+export interface FollowingResponse {
+  following: UserSummary[]
+  totalCount: number
+  page: number
+  totalPages: number
+}
+
+export interface FollowingIdsResponse {
+  followingIds: number[]
 }
 
 export interface AdminStats {

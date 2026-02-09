@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\CategoryRepository;
+use App\Service\DiscoverService;
 use App\Service\EmailSubscriberService;
 use App\Service\PublicFeedService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,6 +22,7 @@ class PublicController extends AbstractController
         private readonly PublicFeedService $feedService,
         private readonly EmailSubscriberService $subscriberService,
         private readonly CategoryRepository $categoryRepository,
+        private readonly DiscoverService $discoverService,
         private readonly RateLimiterFactory $subscribeEndpointLimiter,
     ) {
     }
@@ -50,6 +52,14 @@ class PublicController extends AbstractController
         $categories = $this->categoryRepository->getCategoryTreeWithCounts();
 
         return $this->json(['categories' => $categories]);
+    }
+
+    #[Route('/homepage', name: 'api_public_homepage', methods: ['GET'])]
+    public function homepage(): JsonResponse
+    {
+        $data = $this->discoverService->getHomepageData();
+
+        return $this->json($data);
     }
 
     #[Route('/feed/recent-changes', name: 'api_public_recent_changes', methods: ['GET'])]

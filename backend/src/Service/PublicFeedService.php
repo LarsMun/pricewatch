@@ -205,9 +205,12 @@ class PublicFeedService
             ->getResult();
 
         return [
+            'id' => $user->getId(),
             'username' => $user->getUsername(),
             'memberSince' => $user->getCreatedAt()->format('c'),
             'productCount' => count($watches),
+            'followerCount' => $user->getFollowerCount(),
+            'followingCount' => $user->getFollowingCount(),
             'products' => array_map(fn(ProductWatch $w) => $this->formatProduct($w), $watches),
             'collections' => array_map(fn($c) => [
                 'name' => $c->getName(),

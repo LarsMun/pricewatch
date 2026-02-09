@@ -33,7 +33,6 @@ services:
 
     App\Controller\AuthController:
         arguments:
-            $loginEndpointLimiter: '@limiter.login_endpoint'
             $registrationEndpointLimiter: '@limiter.registration_endpoint'
             $passwordResetEndpointLimiter: '@limiter.password_reset_endpoint'
             $resendVerificationEndpointLimiter: '@limiter.resend_verification_endpoint'
