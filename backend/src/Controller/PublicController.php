@@ -43,7 +43,9 @@ class PublicController extends AbstractController
 
         $result = $this->feedService->getFeed($page, $limit, $domain, $categorySlug, $sort);
 
-        return $this->json($result);
+        $response = $this->json($result);
+        $response->headers->set('Cache-Control', 'public, max-age=30');
+        return $response;
     }
 
     #[Route('/categories', name: 'api_public_categories', methods: ['GET'])]
@@ -51,7 +53,9 @@ class PublicController extends AbstractController
     {
         $categories = $this->categoryRepository->getCategoryTreeWithCounts();
 
-        return $this->json(['categories' => $categories]);
+        $response = $this->json(['categories' => $categories]);
+        $response->headers->set('Cache-Control', 'public, max-age=300');
+        return $response;
     }
 
     #[Route('/homepage', name: 'api_public_homepage', methods: ['GET'])]
@@ -59,7 +63,9 @@ class PublicController extends AbstractController
     {
         $data = $this->discoverService->getHomepageData();
 
-        return $this->json($data);
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+        return $response;
     }
 
     #[Route('/feed/recent-changes', name: 'api_public_recent_changes', methods: ['GET'])]
@@ -77,7 +83,9 @@ class PublicController extends AbstractController
     {
         $domains = $this->feedService->getPopularDomains();
 
-        return $this->json(['domains' => $domains]);
+        $response = $this->json(['domains' => $domains]);
+        $response->headers->set('Cache-Control', 'public, max-age=300');
+        return $response;
     }
 
     #[Route('/products/{id}', name: 'api_public_product', methods: ['GET'])]
@@ -89,7 +97,9 @@ class PublicController extends AbstractController
             return $this->json(['error' => 'Product niet gevonden'], Response::HTTP_NOT_FOUND);
         }
 
-        return $this->json(['product' => $product]);
+        $response = $this->json(['product' => $product]);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+        return $response;
     }
 
     #[Route('/users/{username}', name: 'api_public_user', methods: ['GET'])]
@@ -101,7 +111,9 @@ class PublicController extends AbstractController
             return $this->json(['error' => 'Gebruiker niet gevonden'], Response::HTTP_NOT_FOUND);
         }
 
-        return $this->json(['user' => $profile]);
+        $response = $this->json(['user' => $profile]);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+        return $response;
     }
 
     #[Route('/users/{username}/collections/{slug}', name: 'api_public_user_collection', methods: ['GET'])]

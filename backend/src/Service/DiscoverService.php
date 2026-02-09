@@ -8,6 +8,8 @@ use App\Entity\User;
 use App\Repository\CollectionRepository;
 use App\Repository\ProductWatchRepository;
 use App\Repository\UserRepository;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 class DiscoverService
 {
@@ -15,6 +17,7 @@ class DiscoverService
         private readonly CollectionRepository $collectionRepository,
         private readonly ProductWatchRepository $productWatchRepository,
         private readonly UserRepository $userRepository,
+        private readonly CacheInterface $cache,
     ) {
     }
 
@@ -26,7 +29,7 @@ class DiscoverService
     public function getDiscoverCollections(string $sort = 'recent', int $page = 1, int $limit = 12): array
     {
         $qb = $this->collectionRepository->createQueryBuilder('c')
-            ->join('c.user', 'u')
+            ->join('c.user', 'u')->addSelect('u')
             ->where('c.isPublic = true')
             ->andWhere('u.isPublic = true')
             ->andWhere('u.username IS NOT NULL');
@@ -108,18 +111,22 @@ class DiscoverService
      */
     public function getHomepageData(): array
     {
-        return [
-            'trendingProducts' => $this->getTrendingProducts(8),
-            'recentCollections' => $this->getRecentCollections(6),
-            'activeUsers' => $this->getActiveUsers(8),
-            'stats' => $this->getStats(),
-        ];
+        return $this->cache->get('homepage_data', function (ItemInterface $item): array {
+            $item->expiresAfter(60);
+
+            return [
+                'trendingProducts' => $this->getTrendingProducts(8),
+                'recentCollections' => $this->getRecentCollections(6),
+                'activeUsers' => $this->getActiveUsers(8),
+                'stats' => $this->getStats(),
+            ];
+        });
     }
 
     private function getTrendingProducts(int $limit): array
     {
         $watches = $this->productWatchRepository->createQueryBuilder('pw')
-            ->join('pw.user', 'u')
+            ->join('pw.user', 'u')->addSelect('u')
             ->where('pw.isPublic = true')
             ->andWhere('pw.isActive = true')
             ->andWhere('u.isPublic = true')
@@ -136,7 +143,8 @@ class DiscoverService
     private function getRecentCollections(int $limit): array
     {
         $collections = $this->collectionRepository->createQueryBuilder('c')
-            ->join('c.user', 'u')
+            ->join('c.user', 'u')->addSelect('u')
+            ->leftJoin('c.productWatches', 'pw')->addSelect('pw')
             ->where('c.isPublic = true')
             ->andWhere('u.isPublic = true')
             ->andWhere('u.username IS NOT NULL')

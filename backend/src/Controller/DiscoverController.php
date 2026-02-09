@@ -29,7 +29,9 @@ class DiscoverController extends AbstractController
 
         $result = $this->discoverService->getDiscoverCollections($sort, $page, $limit);
 
-        return $this->json($result);
+        $response = $this->json($result);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+        return $response;
     }
 
     #[Route('/users', name: 'api_discover_users', methods: ['GET'])]
@@ -45,6 +47,8 @@ class DiscoverController extends AbstractController
 
         $result = $this->discoverService->getDiscoverUsers($sort, $page, $limit);
 
-        return $this->json($result);
+        $response = $this->json($result);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+        return $response;
     }
 }

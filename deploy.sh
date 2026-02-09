@@ -26,7 +26,7 @@ git pull origin main
 
 # Pull pre-built images from GHCR
 echo "📦 Pulling Docker images from GHCR..."
-docker compose -f $COMPOSE_FILE --env-file $ENV_FILE pull api frontend
+docker compose -f $COMPOSE_FILE --env-file $ENV_FILE pull api frontend scheduler
 
 # Stop current containers (except db to prevent data issues)
 echo "⏹️  Stopping current containers..."

@@ -1,6 +1,6 @@
 FROM php:8.3-apache AS base
 
-# Install system dependencies
+# Install system dependencies (includes Chromium for headless browser scraping)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,7 +11,14 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libicu-dev \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
+
+# Set Panther environment variables
+ENV PANTHER_NO_SANDBOX=1
+ENV PANTHER_CHROME_DRIVER_BINARY=/usr/bin/chromedriver
+ENV PANTHER_CHROME_BINARY=/usr/bin/chromium
 
 # Install PHP extensions
 RUN docker-php-ext-configure intl \
@@ -66,7 +73,6 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist && \
 COPY backend/ .
 
 # Create minimal .env for production (real values come from Docker environment)
-# The .env file is in .gitignore, so we need to create it here
 RUN echo "APP_ENV=prod" > .env
 
 RUN composer dump-autoload --optimize --classmap-authoritative
@@ -85,10 +91,4 @@ RUN mkdir -p var/cache var/log \
 RUN chmod 600 config/jwt/private.pem 2>/dev/null || true \
     && chmod 644 config/jwt/public.pem 2>/dev/null || true
 
-# Cache warmup happens at runtime via entrypoint
-
 EXPOSE 80
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/api/health || exit 1

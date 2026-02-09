@@ -14,6 +14,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
+#[ORM\Index(columns: ['is_public', 'username'], name: 'idx_public_username')]
 #[UniqueEntity(fields: ['email'], message: 'Dit e-mailadres is al in gebruik.')]
 #[UniqueEntity(fields: ['username'], message: 'Deze gebruikersnaam is al in gebruik.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface

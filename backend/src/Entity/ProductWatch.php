@@ -17,6 +17,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Index(columns: ['is_active'], name: 'idx_active')]
 #[ORM\Index(columns: ['user_id', 'is_active'], name: 'idx_user_active')]
 #[ORM\Index(columns: ['category_id'], name: 'idx_category')]
+#[ORM\Index(columns: ['is_public', 'is_active', 'subscriber_count'], name: 'idx_public_active_popular')]
 class ProductWatch
 {
     #[ORM\Id]

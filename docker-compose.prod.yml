@@ -91,9 +91,9 @@ services:
       - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$${1}"
       - "traefik.http.routers.frontend.middlewares=www-redirect"
 
-  # Price check scheduler (cron)
+  # Price check scheduler (cron) - separate image with Chromium
   scheduler:
-    image: ghcr.io/larsmun/pricewatch/api:latest
+    image: ghcr.io/larsmun/pricewatch/scheduler:latest
     restart: always
     deploy:
       resources:

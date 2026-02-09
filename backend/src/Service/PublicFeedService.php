@@ -45,7 +45,8 @@ class PublicFeedService
         string $sort = 'popular'
     ): array {
         $qb = $this->productWatchRepository->createQueryBuilder('pw')
-            ->join('pw.user', 'u')
+            ->join('pw.user', 'u')->addSelect('u')
+            ->leftJoin('pw.category', 'cat')->addSelect('cat')
             ->where('pw.isPublic = true')
             ->andWhere('pw.isActive = true')
             ->andWhere('u.isPublic = true')
@@ -123,8 +124,9 @@ class PublicFeedService
         $since = new \DateTimeImmutable('-7 days');
 
         $notifications = $this->notificationRepository->createQueryBuilder('n')
-            ->join('n.productWatch', 'pw')
-            ->join('pw.user', 'u')
+            ->join('n.productWatch', 'pw')->addSelect('pw')
+            ->join('pw.user', 'u')->addSelect('u')
+            ->leftJoin('pw.category', 'cat')->addSelect('cat')
             ->where('pw.isPublic = true')
             ->andWhere('pw.isActive = true')
             ->andWhere('u.isPublic = true')
@@ -187,6 +189,7 @@ class PublicFeedService
         }
 
         $watches = $this->productWatchRepository->createQueryBuilder('pw')
+            ->leftJoin('pw.category', 'cat')->addSelect('cat')
             ->where('pw.user = :user')
             ->andWhere('pw.isPublic = true')
             ->andWhere('pw.isActive = true')
