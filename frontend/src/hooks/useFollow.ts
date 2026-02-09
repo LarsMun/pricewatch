@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
-import type { FollowersResponse, FollowingResponse, FollowingIdsResponse, UserSummary } from '../types'
+import type { FollowersResponse, FollowingResponse, FollowingIdsResponse } from '../types'
 
 interface FollowResponse {
   message: string

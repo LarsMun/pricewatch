@@ -13,8 +13,8 @@ interface FollowButtonProps {
 
 export default function FollowButton({
   userId,
-  username,
-  initialFollowerCount,
+  username: _username,
+  initialFollowerCount: _initialFollowerCount,
   onFollowerCountChange,
   size = 'md',
 }: FollowButtonProps) {
